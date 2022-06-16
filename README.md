@@ -12,3 +12,9 @@ https://systemd.io/BOOT_LOADER_INTERFACE/
 
 enable viewing boot messages during boot
 https://askubuntu.com/questions/248/how-can-i-show-or-hide-boot-messages-when-ubuntu-starts
+
+remote boot messages (netconsole)
+https://unix.stackexchange.com/questions/391594/is-it-possible-to-see-the-messages-that-are-displayed-at-boot-of-a-server-with-a
+
+netconsole info
+https://www.kernel.org/doc/html/latest/networking/netconsole.html
