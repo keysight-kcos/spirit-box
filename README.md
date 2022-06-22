@@ -1,6 +1,11 @@
 # data-driven-boot-up-ui
 Data-driven Web/Terminal UI for a Linux System Boot-Up
 
+To Do
+debian install
+hello world service
+
+Research Resources
 view boot logs
 https://superuser.com/questions/1081851/see-the-systemd-boot-logs
 
