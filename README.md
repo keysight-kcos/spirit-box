@@ -1,13 +1,15 @@
 # data-driven-boot-up-ui
 Data-driven Web/Terminal UI for a Linux System Boot-Up
 
-# To Do
-debian install
+## To Do
+- [ ] basic go systemd monitoring
 
-hello world service
+- [ ] debian install
+
+- [x] hello world service
 
 
-### Adding the service:
+## Adding the service:
 navigate to the directory for the script file. Copy to directory.
 ex. /usr/local/bin/project1
 
@@ -27,7 +29,7 @@ you can view the systemd plot to check if the service ran
 ex. systemd-analyze plot > boot.svg
 
 
-### Research Resources
+## Research Resources
 
 view boot logs
 https://superuser.com/questions/1081851/see-the-systemd-boot-logs
