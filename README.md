@@ -5,6 +5,22 @@ To Do
 debian install
 hello world service
 
+
+Adding the service:
+navigate to the directory for the script file. Copy to directory.
+ex. /usr/local/bin/project1
+enable permissions
+ex. chmod u+x /usr/local/bin/project1
+navigate and copy the service file
+ex. /lib/systemd/system/project1.service
+reload daemons
+ex. systemctl daemon-reload
+enable service
+ex. systemctl enable project1.service
+you can view the systemd plot to check if the service ran
+ex. systemd-analyze plot > boot.svg
+
+
 Research Resources
 view boot logs
 https://superuser.com/questions/1081851/see-the-systemd-boot-logs
