@@ -1,25 +1,71 @@
 # data-driven-boot-up-ui
 Data-driven Web/Terminal UI for a Linux System Boot-Up
 
-To Do
-debian install
-hello world service
+### TODO
+- [ ] The tracking of services sometimes misses updates; change the implementation to have consistent tracking.
+- [ ] Investigate ways to remove the need to switch between TTYs.
 
-Research Resources
-view boot logs
-https://superuser.com/questions/1081851/see-the-systemd-boot-logs
+## 06/23
+As of now, the printSystemdInfo program will track the services in the whitelist:
+```
+echo_server.service:running
+printSpam.service:dead
+polkit.service:running
+```
+where the format is \<unit name\>:\<substate\>. 
 
-boot loader messages thru VNC console
-https://www.infomaniak.com/en/support/faq/2182/displaying-the-bootloader-for-an-unmanaged-cloud-server-from-the-console
+When the service has the same substate that is
+specified in the whitelist, it is considered "ready".
 
-bootloader variables in systemd. Perhaps we can print these during boot somehow
-https://systemd.io/BOOT_LOADER_INTERFACE/
+Example output:
+```
+Units to be watched:
+echo_server.service, ready when substate=running
+printSpam.service, ready when substate=dead
+polkit.service, ready when substate=running
 
-enable viewing boot messages during boot
-https://askubuntu.com/questions/248/how-can-i-show-or-hide-boot-messages-when-ubuntu-starts
+Timeout = 120s
 
-remote boot messages (netconsole)
-https://unix.stackexchange.com/questions/391594/is-it-possible-to-see-the-messages-that-are-displayed-at-boot-of-a-server-with-a
+Initial states:
+echo_server.service: loaded active running
+printSpam.service: loaded inactive dead
+polkit.service: loaded active running
 
-netconsole info
-https://www.kernel.org/doc/html/latest/networking/netconsole.html
+Waiting for unit updates...
+echo_server.service: ready=true
+printSpam.service: ready=true
+polkit.service: ready=true
+
+3 units are ready.
+```
+
+The systemd unit file for launching this program:
+```
+[Unit]
+Description=Print systemd info to tty.
+After=dbus.service
+Before=getty@tty2.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/<path_to>/printSystemdInfo
+StandardOutput=tty
+TTYPath=/dev/tty2
+
+[Install]
+WantedBy=multi-user.target
+```
+
+This will launch the binary for the program and output to tty2.
+
+In addition, we must add the following file to ensure that the output printed to tty2 
+is not cleared after the login prompt pops up:
+
+`/etc/systemd/system/getty@tty2.service.d/override.conf`
+
+Contents of override.conf:
+```
+[Service]
+TTYVTDisallocate=no
+```
