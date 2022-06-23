@@ -12,6 +12,7 @@ import(
 )
 
 type unitInfo struct {
+	name string
 	substate string // exited or running
 	ready bool // observed substate matches desired substate
 }
@@ -25,27 +26,22 @@ func main() {
 
 	units := loadWhitelist("/home/severian/data-driven-boot-up-ui/whitelist")
 	fmt.Println("Units to be watched:")
-	for name, info := range units {
-		fmt.Printf("%s, ready when substate=%s\n", name, info.substate)
+	for _, info := range units {
+		fmt.Printf("%s, ready when substate=%s\n", info.name, info.substate)
 	}
-	//return
-
-	// May be useful for monitoring:
-	// SubscribeUnitsCustom 
-	// SetPropertiesSubscriber
-	// SetSubStateSubscriber
-	// SubscriptionSet
 
 	watchAll := false
 
 	timeout := 120
 	fmt.Printf("\nTimeout = %ds\n", timeout)
 	timer := time.NewTimer(time.Duration(timeout)*time.Second)
+	interval := 3*time.Second
+
 	dConn.Subscribe()
 	if watchAll {
 		watchAllUnits(dConn, timer)
 	} else {
-		watchUnits(dConn, timer, units)
+		watchUnits(dConn, interval, timer, units)
 	}
 }
 
@@ -69,72 +65,84 @@ func watchAllUnits(dConn *dbus.Conn, timer *time.Timer) {
 	}
 }
 
-func watchUnits(dConn *dbus.Conn, timer *time.Timer, unitsToWatch map[string]unitInfo) {
+func watchUnits(
+	dConn *dbus.Conn,
+	interval time.Duration,
+	timer *time.Timer,
+	unitsToWatch []*unitInfo,
+) {
 	fmt.Println("\nInitial states:")
-	subset := dConn.NewSubscriptionSet()
-	for unitName, _ := range unitsToWatch {
-		properties, err := dConn.GetUnitProperties(unitName)
+	for _, unitInfo := range unitsToWatch {
+		properties, err := dConn.GetUnitProperties(unitInfo.name)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf(
 			"%s: %s %s %s\n",
-			unitName,
+			unitInfo.name,
 			properties["LoadState"],
 			properties["ActiveState"],
 			properties["SubState"],
 		)
 
-		unit := unitsToWatch[unitName]
-		if unit.substate == "watch" || properties["SubState"] == unit.substate {
-			unit.ready = true
-			unitsToWatch[unitName] = unit
+		if unitInfo.substate == "watch" || properties["SubState"] == unitInfo.substate {
+			unitInfo.ready = true
 		}
-
-		subset.Add(unitName)
 	}
 
-	updates, errors := subset.Subscribe()
-	for {
+	started := time.Now()
+L:
+	for i := 0; ; i++ {
 		allReady := true
-		fmt.Print("\nWaiting for unit updates...\n")
-		for unitName, info := range unitsToWatch {
-			allReady = allReady && info.ready
-			fmt.Printf("%s: ready=%t\n", unitName, info.ready)
+		eraseToEndOfLine()
+		fmt.Printf("\nWaiting for unit updates... (%.4fs)\n", time.Since(started).Seconds())
+		for _, unitInfo := range unitsToWatch {
+			allReady = allReady && unitInfo.ready
+			eraseToEndOfLine()
+			fmt.Printf("%s: ready=%t\n", unitInfo.name, unitInfo.ready)
 		}
 		fmt.Println()
 		if allReady {
+			if i != 0 {
+				moveCursorDown(len(unitsToWatch))
+				fmt.Print("\n")
+			}
 			fmt.Printf("%d units are ready.\n", len(unitsToWatch))
-			return
+			break
 		}
 		select {
-			case update := <-updates:
-				for name, status := range update {
-					unit := unitsToWatch[name]
-					fmt.Printf("%s was updated: ", name)
-					if status == nil {
-						fmt.Println("dead")
-						if unitsToWatch[name].substate != "dead" {
-							break
-						}
-					} else if unit.substate != "watch" && status.SubState != unit.substate {
-						fmt.Printf("%s %s %s\n", status.LoadState, status.ActiveState, status.SubState)
-						break
-					}
-					fmt.Printf("%s %s %s\n", status.LoadState, status.ActiveState, status.SubState)
-					unit.ready = true
-					unitsToWatch[name] = unit
-				}
-			case err := <-errors:
-				log.Fatal(err)
 			case <-timer.C:
-				return
+				moveCursorDown(len(unitsToWatch))
+				fmt.Println("\nTimed out.")
+				break L
+			default:
+				break
 		}
+		time.Sleep(interval)
+		for _, unitInfo := range unitsToWatch {
+			properties, err := dConn.GetUnitProperties(unitInfo.name)
+			if err != nil {
+				log.Fatal(err)
+			}
+			eraseToEndOfLine()
+			fmt.Printf(
+				"%s: %s %s %s\n",
+				unitInfo.name,
+				properties["LoadState"],
+				properties["ActiveState"],
+				properties["SubState"],
+			)
+
+			if unitInfo.substate == "watch" || properties["SubState"] == unitInfo.substate {
+				unitInfo.ready = true
+			}
+		}
+		moveCursorUp(2*len(unitsToWatch)+3)
 	}
 }
 
-func loadWhitelist(filename string) map[string]unitInfo {
-	units := make(map[string]unitInfo)
+func loadWhitelist(filename string) []*unitInfo {
+	units := make([]*unitInfo, 0)
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -149,7 +157,27 @@ func loadWhitelist(filename string) map[string]unitInfo {
 			log.Fatal(errors.New("Line in whitelist did not match <unit name>:<substate> format."))
 		}
 
-		units[split[0]] = unitInfo{split[1], false}
+		units = append(units, &unitInfo{split[0], split[1], false})
 	}
 	return units
+}
+
+func saveCursorPosition() {
+	fmt.Print("\033[s")
+}
+
+func restoreCursorPosition() {
+	fmt.Print("\033[u")
+}
+
+func eraseToEndOfLine() {
+	fmt.Printf("\033[K")
+}
+
+func moveCursorUp(lines int) {
+	fmt.Printf("\033[%dA", lines)
+}
+
+func moveCursorDown(lines int) {
+	fmt.Printf("\033[%dB", lines)
 }

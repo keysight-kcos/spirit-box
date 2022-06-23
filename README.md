@@ -1,11 +1,25 @@
 # data-driven-boot-up-ui
 Data-driven Web/Terminal UI for a Linux System Boot-Up
 
+### Links
+Terminal cursor movement & overwriting lines: https://unix.stackexchange.com/questions/43075/how-to-change-the-contents-of-a-line-on-the-terminal-as-opposed-to-writing-a-new
+
 ### TODO
-- [ ] The tracking of services sometimes misses updates; change the implementation to have consistent tracking.
 - [ ] Investigate ways to remove the need to switch between TTYs.
+- [ ] Create a log file with timestamps.
 
 ## 06/23
+- [x] The tracking of services sometimes misses updates; change the implementation to have consistent tracking.
+
+The states of the units is now tracked on a set interval. The program
+appears to catch all updates now.
+
+Also, I added some terminal escape codes to overwrite updates on the screen
+(as opposed appending each update as a list) as well as added output that
+displays the amount of time that has passed. A sequential list of the
+status of the units could be written to a log file with timestamps.
+
+## 06/22
 As of now, the printSystemdInfo program will track the services in the whitelist:
 ```
 echo_server.service:running
