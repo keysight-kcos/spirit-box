@@ -6,8 +6,11 @@ Terminal cursor movement & overwriting lines: https://unix.stackexchange.com/que
 
 ### TODO
 - [ ] Create a log file with timestamps.
-- [ ] Create a script to automate the setup/tinkering of unit files.
 
+## 06/24
+___
+Created a .deb package.
+___
 ## 06/23
 
 ___

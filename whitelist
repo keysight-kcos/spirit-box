@@ -1,3 +1,0 @@
-echo_server.service:running
-printSpam.service:dead
-polkit.service:running

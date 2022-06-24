@@ -1,0 +1,17 @@
+[Unit]
+Description=Disable systemd console logging.
+StartLimitIntervalSec=0
+After=systemd
+Before=system.slice dbus.service
+#Before=console-setup.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# send signal to disable console logging
+ExecStart=kill -s SIGRTMIN+21 1
+# send signal to enable console logging
+ExecStop=kill -s SIGRTMIN+20 1
+
+[Install]
+WantedBy=multi-user.target

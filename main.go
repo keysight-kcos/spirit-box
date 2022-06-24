@@ -24,7 +24,7 @@ func main() {
 	}
 	defer dConn.Close()
 
-	units := loadWhitelist("/home/severian/data-driven-boot-up-ui/whitelist")
+	units := loadWhitelist("/usr/share/spirit-box/whitelist")
 	fmt.Println("Units to be watched:")
 	for _, info := range units {
 		fmt.Printf("%s, ready when substate=%s\n", info.name, info.substate)
@@ -32,10 +32,10 @@ func main() {
 
 	watchAll := false
 
-	timeout := 120
+	timeout := 30
 	fmt.Printf("\nTimeout = %ds\n", timeout)
 	timer := time.NewTimer(time.Duration(timeout)*time.Second)
-	interval := 3*time.Second
+	interval := time.Second
 
 	dConn.Subscribe()
 	if watchAll {
