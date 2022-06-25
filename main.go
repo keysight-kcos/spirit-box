@@ -3,6 +3,7 @@ package main
 import(
 	"fmt"
 	"github.com/coreos/go-systemd/v22/dbus"
+	"spirit-box/logging"
 	"log"
 	"time"
 	"os"
@@ -77,7 +78,7 @@ func watchUnits(
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf(
+		fmt.Sprintf(
 			"%s: %s %s %s\n",
 			unitInfo.name,
 			properties["LoadState"],

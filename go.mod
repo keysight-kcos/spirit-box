@@ -1,4 +1,4 @@
-module systemd_sandbox
+module spirit-box
 
 go 1.18
 
