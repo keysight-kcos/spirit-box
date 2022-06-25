@@ -7,11 +7,21 @@ Terminal cursor movement & overwriting lines: https://unix.stackexchange.com/que
 Useful video on .deb packaging: https://www.youtube.com/watch?v=ep88vVfzDAo
 
 ### TODO
-- [ ] Create a log file with timestamps.
+- [ ] Implement logging of systemd tracking info.
+- [ ] Move systemd monitoring functions to their own subpackage.
+- [ ] Networking/HW information
 
 ## 06/24
 ___
-Created a .deb package.
+
+As of now, our two main goals are to add logging and the ability for the program to execute arbitrary scripts/programs (command paths read from a file).
+
+After these are done, we want to use goroutines and channels to simultaneously output the systemd info and the script info (probably just output and exit codes for now).
+
+The next step after that would possibly be to expand the script execution functionality by defining some standardized interface for the scripts that are run so that users have access to more fine-grained information in our program's output.
+
+- Created a .deb package. Was able to install and run on Lorenzo's machine. Issue with the disableSystemdLogging.service file, but I believe it is fixed now. Will confirm on Monday.
+- Preliminary logging subpackage in place. Has yet to be implemented with current systemd tracking functions.
 ___
 ## 06/23
 
