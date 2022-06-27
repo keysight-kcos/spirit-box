@@ -29,3 +29,5 @@ func InitLogger() {
 
 	Logger = log.New(file, "", log.LstdFlags)
 }
+
+func Blank() {}

@@ -8,8 +8,10 @@ Useful video on .deb packaging: https://www.youtube.com/watch?v=ep88vVfzDAo
 
 ### TODO
 - [ ] Implement logging of systemd tracking info.
-- [ ] Move systemd monitoring functions to their own subpackage.
 - [ ] Networking/HW information
+
+## 06/27
+- [x] Move systemd monitoring functions to their own subpackage.
 
 ## 06/24
 ___
