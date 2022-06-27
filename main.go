@@ -8,6 +8,7 @@ import(
 	"spirit-box/device"
 	"log"
 	"time"
+	// "os/exec"
 )
 
 func main() {
@@ -16,6 +17,14 @@ func main() {
 	logFile := logging.InitLogger()
 	fmt.Printf("Writing log to %s\n", logFile)
 
+	/*
+	cmd := exec.Command("ip", "addr")
+	out, err := cmd.Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Print(string(out))
+	*/
 	device.PrintInterfaces()
 
 	dConn, err := dbus.New()
@@ -31,7 +40,7 @@ func main() {
 	}
 
 	timeout := 30
-	fmt.Printf("\nTimeout = %ds\n", timeout)
+	fmt.Printf("\nTimeout = %ds\n\n", timeout)
 	timer := time.NewTimer(time.Duration(timeout)*time.Second)
 	interval := time.Second
 

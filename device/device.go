@@ -17,19 +17,24 @@ func PrintInterfaces() {
 		log.Fatal(err)
 	}
 	for _, i := range interfaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		ips := make([]string, 0)
-		for _, addr := range addrs {
-			str := addr.String()
-			if isIPv4(str) {
+		var ips []string
+		ipv4_exists := false // keep checking until interface has ipv4 address
+		for {
+			ips = make([]string, 0)
+			addrs, err := i.Addrs()
+			if err != nil {
+				log.Fatal(err)
+			}
+			for _, addr := range addrs {
+				str := addr.String()
 				ips = append(ips, str)
+				ipv4_exists = ipv4_exists || isIPv4(str)
+			}
+			if ipv4_exists {
+				break
 			}
 		}
-		out := fmt.Sprintf("%s: %s\n", i.Name, strings.Join(ips, ","))
+		out := fmt.Sprintf("%s: %s\n", i.Name, strings.Join(ips, ", "))
 		fmt.Print(out)
 		l.Print(out)
 	}

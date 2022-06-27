@@ -91,12 +91,13 @@ func WatchUnits(
 	unitsToWatch []*UnitInfo,
 ) {
 	l := logging.Logger
-	fmt.Println("\nInitial states:")
-	printAndLogUnits(dConn, l, unitsToWatch)
 
 	started := time.Now()
+	fmt.Println("Current unit statuses:")
+
 L:
 	for i := 0; ; i++ {
+		printAndLogUnits(dConn, l, unitsToWatch)
 		allReady := true
 		eraseToEndOfLine()
 		fmt.Printf("\nWaiting for unit updates... (%.4fs)\n", time.Since(started).Seconds())
@@ -108,7 +109,7 @@ L:
 		fmt.Println()
 		if allReady {
 			if i != 0 {
-				moveCursorDown(len(unitsToWatch))
+				//moveCursorDown(len(unitsToWatch))
 				fmt.Print("\n")
 			}
 			fmt.Printf("%d units are ready.\n", len(unitsToWatch))
@@ -116,14 +117,14 @@ L:
 		}
 		select {
 		case <-timer.C:
-			moveCursorDown(len(unitsToWatch))
-			fmt.Println("\nTimed out.")
+			//moveCursorDown(len(unitsToWatch))
+			fmt.Println("\nTimed out.\n")
 			break L
 		default:
 			break
 		}
 		time.Sleep(interval)
-		printAndLogUnits(dConn, l, unitsToWatch)
+		//printAndLogUnits(dConn, l, unitsToWatch)
 		moveCursorUp(2*len(unitsToWatch) + 3)
 	}
 }
