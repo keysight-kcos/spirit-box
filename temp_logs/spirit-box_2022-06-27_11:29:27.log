@@ -1,0 +1,7 @@
+2022/06/27 11:29:27 polkit.service: loaded active running READY
+2022/06/27 11:29:27 printSpam.service: not-found inactive dead READY
+2022/06/27 11:29:27 echoServer.service: loaded inactive dead
+2022/06/27 11:29:27 NetworkManager.service: loaded active running READY
+2022/06/27 11:29:27 docker.service: not-found inactive dead READY
+2022/06/27 11:29:27 cron.service: loaded active running READY
+2022/06/27 11:29:36 echoServer.service: loaded active running READY

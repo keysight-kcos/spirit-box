@@ -10,7 +10,7 @@ import(
 )
 
 func main() {
-	logging.Blank()
+	logging.InitLogger()
 	fmt.Printf("\033[2J") // clear the screen
 
 	dConn, err := dbus.New()
@@ -22,7 +22,7 @@ func main() {
 	units := services.LoadWhitelist("/usr/share/spirit-box/whitelist")
 	fmt.Println("Units to be watched:")
 	for _, info := range units {
-		fmt.Printf("%s, ready when substate=%s\n", info.Name, info.Substate)
+		fmt.Printf("%s, ready when substate=%s\n", info.Name, info.SubStateDesired)
 	}
 
 	timeout := 30

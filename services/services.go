@@ -2,20 +2,86 @@
 package services
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"github.com/coreos/go-systemd/v22/dbus"
-	"time"
 	"log"
 	"os"
-	"bufio"
+	"spirit-box/logging"
 	"strings"
-	"errors"
+	"time"
 )
 
 type UnitInfo struct {
-	Name string
-	Substate string // exited or running
-	Ready bool // observed substate matches desired substate
+	Name            string
+	SubStateDesired string // service will be considered ready when this substate is met. 
+						   // set to "any" if any substate is okay.
+	Ready           bool   // observed substate matches desired substate
+	LoadState       string
+	ActiveState     string
+	SubState string
+}
+
+func (u *UnitInfo) printAndLogUnitUpdates(updates [3]string, l *log.Logger) {
+	changed := false
+	if updates[0] != u.LoadState {
+		changed = true
+		u.LoadState = updates[0]
+	}
+	if updates[1] != u.ActiveState {
+		changed = true
+		u.ActiveState = updates[1]
+	}
+	if updates[2] != u.SubState {
+		changed = true
+		u.SubState = updates[2]
+	}
+
+	statline := fmt.Sprintf(
+		"%s: %s %s %s",
+		u.Name,
+		u.LoadState,
+		u.ActiveState,
+		u.SubState,
+	)
+	eraseToEndOfLine()
+	fmt.Print(statline+"\n")
+
+	if u.SubStateDesired == "any" || u.SubState == u.SubStateDesired {
+		u.Ready = true
+		statline += " READY"
+	}
+
+	if changed {
+		l.Print(statline+"\n")
+	}
+
+}
+
+func printAndLogUnits(dConn *dbus.Conn, l *log.Logger, units []*UnitInfo) {
+	for _, u := range units {
+		properties, err := dConn.GetUnitProperties(u.Name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// type assertions
+		s1, ok := properties["LoadState"].(string)
+		if !ok {
+			log.Fatal(errors.New("Type assertion failed: properties[\"LoadState\"] is not a string."))
+		}
+		s2, ok := properties["ActiveState"].(string)
+		if !ok {
+			log.Fatal(errors.New("Type assertion failed: properties[\"ActiveState\"] is not a string."))
+		}
+		s3, ok := properties["SubState"].(string)
+		if !ok {
+			log.Fatal(errors.New("Type assertion failed: properties[\"SubState\"] is not a string."))
+		}
+
+		u.printAndLogUnitUpdates([3]string{s1, s2, s3}, l)
+	}
 }
 
 func WatchUnits(
@@ -24,24 +90,9 @@ func WatchUnits(
 	timer *time.Timer,
 	unitsToWatch []*UnitInfo,
 ) {
+	l := logging.Logger
 	fmt.Println("\nInitial states:")
-	for _, UnitInfo := range unitsToWatch {
-		properties, err := dConn.GetUnitProperties(UnitInfo.Name)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Sprintf(
-			"%s: %s %s %s\n",
-			UnitInfo.Name,
-			properties["LoadState"],
-			properties["ActiveState"],
-			properties["SubState"],
-		)
-
-		if UnitInfo.Substate == "watch" || properties["SubState"] == UnitInfo.Substate {
-			UnitInfo.Ready = true
-		}
-	}
+	printAndLogUnits(dConn, l, unitsToWatch)
 
 	started := time.Now()
 L:
@@ -64,33 +115,16 @@ L:
 			break
 		}
 		select {
-			case <-timer.C:
-				moveCursorDown(len(unitsToWatch))
-				fmt.Println("\nTimed out.")
-				break L
-			default:
-				break
+		case <-timer.C:
+			moveCursorDown(len(unitsToWatch))
+			fmt.Println("\nTimed out.")
+			break L
+		default:
+			break
 		}
 		time.Sleep(interval)
-		for _, UnitInfo := range unitsToWatch {
-			properties, err := dConn.GetUnitProperties(UnitInfo.Name)
-			if err != nil {
-				log.Fatal(err)
-			}
-			eraseToEndOfLine()
-			fmt.Printf(
-				"%s: %s %s %s\n",
-				UnitInfo.Name,
-				properties["LoadState"],
-				properties["ActiveState"],
-				properties["SubState"],
-			)
-
-			if UnitInfo.Substate == "watch" || properties["SubState"] == UnitInfo.Substate {
-				UnitInfo.Ready = true
-			}
-		}
-		moveCursorUp(2*len(unitsToWatch)+3)
+		printAndLogUnits(dConn, l, unitsToWatch)
+		moveCursorUp(2*len(unitsToWatch) + 3)
 	}
 }
 
@@ -110,7 +144,7 @@ func LoadWhitelist(filename string) []*UnitInfo {
 			log.Fatal(errors.New("Line in whitelist did not match <unit name>:<substate> format."))
 		}
 
-		units = append(units, &UnitInfo{split[0], split[1], false})
+		units = append(units, &UnitInfo{split[0], split[1], false, "", "", ""})
 	}
 	return units
 }
