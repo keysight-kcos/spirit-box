@@ -2,7 +2,7 @@
 Description=Disable systemd console logging.
 StartLimitIntervalSec=0
 #After=systemd
-Before=system.slice dbus.service
+Before=dbus.service
 #Before=console-setup.service
 
 [Service]
