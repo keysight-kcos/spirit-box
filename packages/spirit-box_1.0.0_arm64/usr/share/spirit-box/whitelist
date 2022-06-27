@@ -1,0 +1,4 @@
+polkit.service:running
+NetworkManager.service:running
+cron.service:running
+docker.service:any
