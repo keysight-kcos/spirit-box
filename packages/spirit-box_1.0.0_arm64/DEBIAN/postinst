@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -x
+
+systemctl enable disableSystemdLogging.service
+systemctl enable spirit-box.service
