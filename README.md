@@ -6,13 +6,15 @@ Data-driven Web/Terminal UI for a Linux System Boot-Up
 Terminal cursor movement & overwriting lines: https://unix.stackexchange.com/questions/43075/how-to-change-the-contents-of-a-line-on-the-terminal-as-opposed-to-writing-a-new
 
 Useful video on .deb packaging: https://www.youtube.com/watch?v=ep88vVfzDAo
-=======
 
 ### TODO
-- [ ] Implement logging of systemd tracking info.
 - [ ] Networking/HW information
+- [ ] Interactive TUI
 
 ## 06/27
+We are now looking into using charm's bubbletea package for implementing TUI functionality.
+- [x] Basic networking information (IPs for each NIC)
+- [x] Implement logging of systemd tracking info.
 - [x] Move systemd monitoring functions to their own subpackage.
 
 ## 06/24
