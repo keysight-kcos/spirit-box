@@ -5,13 +5,18 @@ import(
 	"github.com/coreos/go-systemd/v22/dbus"
 	"spirit-box/logging"
 	"spirit-box/services"
+	"spirit-box/device"
 	"log"
 	"time"
 )
 
 func main() {
-	logging.InitLogger()
 	fmt.Printf("\033[2J") // clear the screen
+
+	logFile := logging.InitLogger()
+	fmt.Printf("Writing log to %s\n", logFile)
+
+	device.PrintInterfaces()
 
 	dConn, err := dbus.New()
 	if err != nil {
