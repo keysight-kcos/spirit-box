@@ -15,7 +15,7 @@ func main() {
 	fmt.Printf("\033[2J") // clear the screen
 
 	logFile := logging.InitLogger()
-	fmt.Printf("Writing log to %s\n", logFile)
+	fmt.Printf("Writing log to %s\n\n", logFile)
 
 	/*
 	cmd := exec.Command("ip", "addr")
