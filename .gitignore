@@ -1,2 +1,6 @@
 ./echo*
 ./logDriver.go
+./example_scripts
+./example_scripts/*
+./for_demo
+./for_demo/*

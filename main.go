@@ -6,6 +6,7 @@ import(
 	"spirit-box/logging"
 	"spirit-box/services"
 	"spirit-box/device"
+	"spirit-box/scripts"
 	"log"
 	"time"
 	// "os/exec"
@@ -15,17 +16,12 @@ func main() {
 	fmt.Printf("\033[2J") // clear the screen
 
 	logFile := logging.InitLogger()
-	fmt.Printf("Writing log to %s\n", logFile)
+	fmt.Printf("Writing log to %s\n\n", logFile)
 
-	/*
-	cmd := exec.Command("ip", "addr")
-	out, err := cmd.Output()
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Print(string(out))
-	*/
 	device.PrintInterfaces()
+
+	scripts.RunAllScripts()
+	fmt.Println()
 
 	dConn, err := dbus.New()
 	if err != nil {
