@@ -16,6 +16,16 @@ func RunAllScripts() {
 	loadScriptList()
 }
 
+func executeAndOutput(l *log.Logger, line string) {
+	fmt.Println("Running script " + line + "...")
+	out, err := exec.Command("/bin/sh", line).Output()
+		if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s", out)
+	l.Printf("Ran %s", line)
+}
+
 func runScriptsInDir(){
 	l := logging.Logger
 	scriptDir := "/usr/share/spirit-box/"
@@ -23,13 +33,7 @@ func runScriptsInDir(){
 	fmt.Printf("Running scripts in %s\n", scriptDir);
 	for _, item := range items {
 		if !item.IsDir() && item.Name()[len(item.Name())-3:] == ".sh"{
-			fmt.Println("Running script " + scriptDir + item.Name() + "...")
-			out, err := exec.Command("/bin/sh", scriptDir + item.Name()).Output()
-			if err != nil{
-				log.Fatal(err)
-			}
-			fmt.Printf("%s", out)
-			l.Printf("Ran %s%s", scriptDir, item.Name())
+			go executeAndOutput(l, scriptDir+item.Name())
 		}
 	}
 	fmt.Println()
@@ -57,14 +61,8 @@ func loadScriptList() ([]string, error) {
 		if _, err := os.Stat(line); errors.Is(err, os.ErrNotExist) {
 			log.Fatal(errors.New("Script does not exist: " + line))
 		} else {
-			fmt.Println("Running script " + line + "...")
 			lines = append(lines, line)
-			out, err := exec.Command("/bin/sh", line).Output()
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("%s", out)
-			l.Printf("Ran %s", line)
+			go executeAndOutput(l, line)
 		}
 
 	}
