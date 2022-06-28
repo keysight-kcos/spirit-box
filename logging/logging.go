@@ -11,6 +11,17 @@ import (
 // It has built-in serialization for access to its Writer, aka concurrent calls to Print etc are okay.
 var Logger *log.Logger
 
+type LogObject interface {
+	ToString() string
+}
+
+type LogEvent struct {
+	StartTime time.Time
+	EndTime time.Time
+	Desc string
+	Obj LogObject
+}
+
 const (
 	LOG_PATH = "/usr/share/spirit-box/logs/"
 	// LOG_PATH = "/home/severian/data-driven-boot-up-ui/temp_logs/" // temporarily want to work with files in local dir
