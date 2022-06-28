@@ -16,7 +16,8 @@ func RunAllScripts() {
 	loadScriptList()
 }
 
-func executeAndOutput(l *log.Logger, line string) {
+func checkShebang(line string) (bool, string){
+	isScript := true
 	file, err := os.Open(line)
 	if err != nil {
 		log.Fatal(err)
@@ -26,10 +27,17 @@ func executeAndOutput(l *log.Logger, line string) {
 	scanner.Scan()
 	shebang := scanner.Text()
 	if shebang[:2] != "#!"{
-		return
+		isScript = false
 	}
 	shell := shebang[2:]
+	return isScript, shell
+}
 
+func executeAndOutput(l *log.Logger, line string) {
+	isScript, shell := checkShebang(line)
+	if !isScript{
+		return
+	}
 	fmt.Println("Running script " + line + "...")
 	out, err := exec.Command(shell, line).Output()
 		if err != nil {
