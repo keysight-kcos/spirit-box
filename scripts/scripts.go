@@ -17,8 +17,21 @@ func RunAllScripts() {
 }
 
 func executeAndOutput(l *log.Logger, line string) {
+	file, err := os.Open(line)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	scanner.Scan()
+	shebang := scanner.Text()
+	if shebang[:2] != "#!"{
+		return
+	}
+	shell := shebang[2:]
+
 	fmt.Println("Running script " + line + "...")
-	out, err := exec.Command("/bin/sh", line).Output()
+	out, err := exec.Command(shell, line).Output()
 		if err != nil {
 		log.Fatal(err)
 	}
