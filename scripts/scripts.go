@@ -11,6 +11,18 @@ import(
 	"spirit-box/logging"
 )
 
+type ScriptData struct{
+	PID int
+	path string
+	shell string
+	startTime int
+	endTime int
+	output string
+	exitcode int
+	priority int
+	valid bool
+}
+
 func RunAllScripts() {
 	runScriptsInDir()
 	loadScriptList()
@@ -37,33 +49,44 @@ outputs: bool - true if shebang exists
 	return isScript, shell
 }
 
-func executeAndOutput(l *log.Logger, line string) {
+func executeAndOutput(l *log.Logger, scriptData ScriptData, co chan<- ScriptData) {
 /*executes a script
 inputs: *log.Logger - logger
         string - path to script*/
-	isScript, shell := checkShebang(line)
+	isScript, shell := checkShebang(scriptData.path)
 	if !isScript{
+		scriptData.valid = false
+		co <- scriptData
 		return
 	}
-	fmt.Println("Running script " + line + "...")
-	out, err := exec.Command(shell, line).Output()
+	fmt.Println("Running script " + scriptData.path + "...")
+	out, err := exec.Command(shell, scriptData.path).Output()
 		if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s", out)
-	l.Printf("Ran %s", line)
+	scriptData.output = string(out)
+	co <- scriptData
+	l.Printf("Ran %s", scriptData.path)
 }
 
 func runScriptsInDir(){
 /*runs the scripts in hard coded directory*/
 	l := logging.Logger
+	outputChannel := make(chan ScriptData)
+	scriptData := ScriptData{}
+	scriptCount := 0
 	scriptDir := "/usr/share/spirit-box/"
 	items, _ := ioutil.ReadDir(scriptDir)
 	fmt.Printf("Running scripts in %s\n", scriptDir);
 	for _, item := range items {
 		if !item.IsDir() && item.Name()[len(item.Name())-3:] == ".sh"{
-			go executeAndOutput(l, scriptDir+item.Name())
+			scriptData.path = scriptDir+item.Name()
+			scriptCount++
+			go executeAndOutput(l, scriptData, outputChannel)
 		}
+	}
+	for i := 0; i<scriptCount; i++{
+		fmt.Print((<-outputChannel).output)
 	}
 	fmt.Println()
 }
@@ -88,15 +111,23 @@ outputs: []string - array of paths it attempts to execute
 
 	l := logging.Logger
 	scanner := bufio.NewScanner(file)
+	outputChannel := make(chan ScriptData)
+	scriptData := ScriptData{}
+	scriptCount := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 		if _, err := os.Stat(line); errors.Is(err, os.ErrNotExist) {
 			log.Fatal(errors.New("Script does not exist: " + line))
 		} else {
 			lines = append(lines, line)
-			go executeAndOutput(l, line)
+			scriptData.path = line
+			scriptCount++
+			go executeAndOutput(l, scriptData, outputChannel)
 		}
 
+	}
+	for i := 0; i<scriptCount; i++{
+		fmt.Print((<-outputChannel).output)
 	}
 	fmt.Println()
 	return lines, scanner.Err()
