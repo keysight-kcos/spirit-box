@@ -17,6 +17,10 @@ func RunAllScripts() {
 }
 
 func checkShebang(line string) (bool, string){
+/*checks if the first 2 characters of a file are shebang
+inputs: string - the file path
+outputs: bool - true if shebang exists
+         string - the path of the shell to use*/
 	isScript := true
 	file, err := os.Open(line)
 	if err != nil {
@@ -34,6 +38,9 @@ func checkShebang(line string) (bool, string){
 }
 
 func executeAndOutput(l *log.Logger, line string) {
+/*executes a script
+inputs: *log.Logger - logger
+        string - path to script*/
 	isScript, shell := checkShebang(line)
 	if !isScript{
 		return
@@ -48,6 +55,7 @@ func executeAndOutput(l *log.Logger, line string) {
 }
 
 func runScriptsInDir(){
+/*runs the scripts in hard coded directory*/
 	l := logging.Logger
 	scriptDir := "/usr/share/spirit-box/"
 	items, _ := ioutil.ReadDir(scriptDir)
@@ -61,6 +69,9 @@ func runScriptsInDir(){
 }
 
 func loadScriptList() ([]string, error) {
+/*executes scripts listed as paths in script file
+outputs: []string - array of paths it attempts to execute
+         error - errors*/
 	var lines []string
 	path := "/usr/share/spirit-box/scripts"
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist){
