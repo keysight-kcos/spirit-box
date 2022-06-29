@@ -1,18 +1,17 @@
 package logging
 
 import (
-	"log"
+	 "encoding/json"
+	 "log"
 	"fmt"
-	"os"
+	 "io"
+	 "os"
+	"sync"
 	"time"
 )
 
-// All packages will write to this logger after it has been initialized.
-// It has built-in serialization for access to its Writer, aka concurrent calls to Print etc are okay.
-var Logger *log.Logger
-
 type LogObject interface {
-	ToString() string
+	LogLine() string
 }
 
 type LogEvent struct {
@@ -22,15 +21,78 @@ type LogEvent struct {
 	Obj LogObject
 }
 
+func NewLogEvent(desc string, obj LogObject) *LogEvent {
+	return &LogEvent{
+		StartTime: time.Now(),
+		EndTime: time.Now(),
+		Desc: desc,
+		Obj: obj,
+	}
+}
+
+func (le *LogEvent) LogLine() string {
+	return fmt.Sprintf("%s: %s", FormatTime(le.StartTime), le.Obj.LogLine())
+}
+
+type LogEvents struct {
+	mu     sync.Mutex
+	Events []*LogEvent
+}
+
+var Logs *LogEvents
+
+func (l *LogEvents) Length() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.Events)
+}
+
+func (l *LogEvents) AddLogEvent(event *LogEvent) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Events = append(l.Events, event)
+}
+
+func (l *LogEvents) WriteJSON(f io.Writer) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	bytes, _ := json.MarshalIndent(l, "", "  ")
+	f.Write(bytes)
+}
+
 const (
 	LOG_PATH = "/usr/share/spirit-box/logs/"
 	// LOG_PATH = "/home/severian/data-driven-boot-up-ui/temp_logs/" // temporarily want to work with files in local dir
 )
 
-func InitLogger() string {
+type MessageLog struct {
+	Message string
+}
+
+func (m *MessageLog) LogLine() string {
+	return m.Message
+}
+
+func InitLogger() {
+	events := make([]*LogEvent, 0, 1000)
+	Logs =  &LogEvents{Events: events}
+
+	initStr := "Starting spirit-box..."
+	Logs.AddLogEvent(&LogEvent{
+		StartTime: time.Now(),
+		EndTime: time.Now(),
+		Desc: initStr,
+		Obj: &MessageLog{initStr},
+	})
+	/*
+	log.Printf("Length of Logs now: %d", Logs.Length())
+	log.Print(Logs.Events[0].LogLine())
+	*/
+}
+
+func CreateLogFile() *os.File {
 	cur_time := time.Now()
-	filename := fmt.Sprintf("spirit-box_%d-%02d-%02d_%02d:%02d:%02d.log",
-		cur_time.Year(), cur_time.Month(), cur_time.Day(), cur_time.Hour(), cur_time.Minute(), cur_time.Second())
+	filename := FormatTime(cur_time)
 
 	file, err := os.OpenFile(LOG_PATH+filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -38,6 +100,18 @@ func InitLogger() string {
 	}
 	// remember to close this file somewhere.
 
-	Logger = log.New(file, "", log.LstdFlags)
-	return filename
+	return file
+}
+
+func FormatTime(cur_time time.Time) string {
+	return fmt.Sprintf(
+		"%d-%02d-%02d_%02d:%02d:%02d.%d.log",
+		cur_time.Year(),
+		cur_time.Month(),
+		cur_time.Day(),
+		cur_time.Hour(),
+		cur_time.Minute(),
+		cur_time.Second(),
+		cur_time.Nanosecond(),
+	)
 }

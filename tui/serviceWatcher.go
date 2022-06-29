@@ -14,6 +14,8 @@ import (
 
 var readyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("10"))
 var notReadyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("9"))
+var alignRightStyle = lp.NewStyle().Align(lp.Right)
+var alignLeftStyle = lp.NewStyle().Align(lp.Left)
 
 const systemdInterval = 500 // time between updates in milliseconds
 
@@ -61,13 +63,26 @@ func (s serviceModel) View() string {
 
 	var readyStatus string
 	for _, u := range s.watcher.Units {
-		if u.Ready {
+		if u.SubStateDesired == "watch" {
+			readyStatus = readyStyle.Render("WATCHING")
+		} else if u.Ready {
 			readyStatus = readyStyle.Render("READY")
 		} else {
 			readyStatus = notReadyStyle.Render("NOT READY")
 		}
-		fmt.Fprintf(&b, "%s: %s %s %s %s\n", u.Name, u.LoadState, u.ActiveState, u.SubState, readyStatus)
+		left := u.Name+":"
+		right:= fmt.Sprintf("%s %s %s %s",
+			alignRight(len("not-found"), u.LoadState),
+			alignRight(len("activating"), u.ActiveState),
+			alignRight(len("running"), u.SubState),
+			alignRight(len("WATCHING"), readyStatus),
+		)
+		fmt.Fprintf(&b, "%s%s %s\n", left, alignRight(80-len(left), right), u.Description)
 	}
 
 	return b.String()
+}
+
+func alignRight(width int, str string) string {
+	return alignRightStyle.Width(width).Render(str)
 }
