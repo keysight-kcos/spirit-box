@@ -2,39 +2,34 @@ package tui
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
+
+	g "spirit-box/tui/globals"
+	"spirit-box/tui/systemd"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
 )
 
-type Screen int
-
-const (
-	TopLevel Screen = iota
-	Services
-	UnitInfoPage
-	Scripts
-)
-
-type switchScreenMsg Screen
-
 type model struct {
 	options     []string
 	cursorIndex int
-	curScreen   Screen
-	services    serviceModel
+	curScreen   g.Screen
+	systemd     systemd.Model
 }
 
 func (m model) Init() tea.Cmd {
-	return m.services.Init()
+	return m.systemd.Init()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	cmds := make([]tea.Cmd, 0)
+
 	switch m.curScreen {
-	case TopLevel:
+	case g.TopLevel:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
@@ -48,7 +43,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case "enter":
 				if m.cursorIndex == 0 {
-					m.curScreen = Services
+					return m, func() tea.Msg { return g.SwitchScreenMsg(g.Systemd) }
 				}
 			case "q":
 				return m, tea.Quit
@@ -57,25 +52,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		}
-	case Services:
-		m.services, cmd = m.services.Update(msg)
-	case UnitInfoPage:
-		m.services.selectedUnit, cmd = m.services.selectedUnit.Update(msg)
+	case g.Systemd:
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	case g.UnitInfoScreen:
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	switch msg := msg.(type) {
-	case switchScreenMsg:
-		m.curScreen = Screen(msg)
-	case systemdUpdateMsg:
-		m.services, cmd = m.services.Update(msg)
+	case g.SwitchScreenMsg:
+		m.curScreen = g.Screen(msg)
+		log.Printf("From toplevel, SwitchScreenMsg: %s", m.curScreen.String())
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	case g.SystemdUpdateMsg:
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
 	switch m.curScreen {
-	case TopLevel:
+	case g.TopLevel:
 		var b strings.Builder
 		fmt.Fprintf(&b, "spirit-box\n\n")
 		for i, option := range m.options {
@@ -85,10 +86,10 @@ func (m model) View() string {
 			fmt.Fprintf(&b, "%s\n", option)
 		}
 		return b.String()
-	case Services:
-		return m.services.View()
-	case UnitInfoPage:
-		return m.services.selectedUnit.View()
+	case g.Systemd:
+		return m.systemd.View()
+	case g.UnitInfoScreen:
+		return m.systemd.View()
 	}
 	return "Something went wrong!"
 }
@@ -97,8 +98,8 @@ func initialModel(dConn *dbus.Conn) model {
 	return model{
 		options:     []string{"systemd", "scripts"},
 		cursorIndex: 0,
-		curScreen:   TopLevel,
-		services:    newServiceModel(dConn),
+		curScreen:   g.TopLevel,
+		systemd:     systemd.New(dConn),
 	}
 }
 

@@ -1,24 +1,25 @@
 // model for the UnitInfo page. More information for a specified unit.
-package tui
+package systemd
 
 import (
 	"fmt"
 	"log"
 	"sort"
+	g "spirit-box/tui/globals"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
 )
 
-type selectedUnit struct {
+type unitInfo struct {
 	name       string
 	keys       []string
 	properties map[string]interface{}
 }
 
-func InitSelectedUnit(dConn *dbus.Conn, name string) selectedUnit {
-	u := selectedUnit{}
+func InitUnitInfo(dConn *dbus.Conn, name string) unitInfo {
+	u := unitInfo{}
 	var err error
 	u.name = name
 	u.properties, err = dConn.GetUnitProperties(u.name)
@@ -39,18 +40,18 @@ func InitSelectedUnit(dConn *dbus.Conn, name string) selectedUnit {
 	return u
 }
 
-func (u selectedUnit) Update(msg tea.Msg) (selectedUnit, tea.Cmd) {
+func (u unitInfo) Update(msg tea.Msg) (unitInfo, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
-			return u, func() tea.Msg { return switchScreenMsg(Services) }
+			return u, func() tea.Msg { return g.SwitchScreenMsg(g.Systemd) }
 		}
 	}
 	return u, nil
 }
 
-func (u selectedUnit) View() string {
+func (u unitInfo) View() string {
 	var b strings.Builder
 	for _, key := range u.keys {
 		v := u.properties[key]
