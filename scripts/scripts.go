@@ -20,7 +20,6 @@ type ScriptData struct{
 	output string
 	exitcode int
 	priority int
-	valid bool
 }
 
 func RunAllScripts() {
@@ -42,8 +41,8 @@ outputs: bool - true if shebang exists
 	scanner := bufio.NewScanner(file)
 	scanner.Scan()
 	shebang := scanner.Text()
-	if shebang[:2] != "#!"{
-		isScript = false
+	if len(shebang) >= 2 && shebang[:2] != "#!"{
+		return false, ""
 	}
 	shell := shebang[2:]
 	return isScript, shell
@@ -52,15 +51,10 @@ outputs: bool - true if shebang exists
 func executeAndOutput(l *log.Logger, scriptData ScriptData, co chan<- ScriptData) {
 /*executes a script
 inputs: *log.Logger - logger
-        string - path to script*/
-	isScript, shell := checkShebang(scriptData.path)
-	if !isScript{
-		scriptData.valid = false
-		co <- scriptData
-		return
-	}
+        ScriptData - data including path to script
+	chan<-ScriptData - channel to collect goroutine output ScriptData*/
 	fmt.Println("Running script " + scriptData.path + "...")
-	out, err := exec.Command(shell, scriptData.path).Output()
+	out, err := exec.Command(scriptData.shell, scriptData.path).Output()
 		if err != nil {
 		log.Fatal(err)
 	}
@@ -79,10 +73,14 @@ func runScriptsInDir(){
 	items, _ := ioutil.ReadDir(scriptDir)
 	fmt.Printf("Running scripts in %s\n", scriptDir);
 	for _, item := range items {
-		if !item.IsDir() && item.Name()[len(item.Name())-3:] == ".sh"{
-			scriptData.path = scriptDir+item.Name()
-			scriptCount++
-			go executeAndOutput(l, scriptData, outputChannel)
+		if !item.IsDir() {
+			isScript, shell := checkShebang(scriptDir+item.Name())
+			if isScript {
+				scriptData.shell = shell
+				scriptData.path = scriptDir+item.Name()
+				scriptCount++
+				go executeAndOutput(l, scriptData, outputChannel)
+			}
 		}
 	}
 	for i := 0; i<scriptCount; i++{
@@ -91,15 +89,29 @@ func runScriptsInDir(){
 	fmt.Println()
 }
 
-func loadScriptList() ([]string, error) {
+func runScriptList(l *log.Logger, scriptList []ScriptData) {
+/*runs scripts in array
+inputs: *log.Logger - log
+	[]ScriptData - list of scripts to run*/
+	outputChannel := make(chan ScriptData)
+
+	for i:= 0; i<len(scriptList); i++{
+		go executeAndOutput(l, scriptList[i], outputChannel)
+	}
+	for i := 0; i<len(scriptList); i++{
+		fmt.Print((<-outputChannel).output)
+	}
+}
+
+func loadScriptList() ([]ScriptData, error) {
 /*executes scripts listed as paths in script file
 outputs: []string - array of paths it attempts to execute
          error - errors*/
-	var lines []string
+	var scriptList []ScriptData
 	path := "/usr/share/spirit-box/scripts"
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist){
 		fmt.Println("No script file.")
-		return lines, err
+		return scriptList, err
 	}
 
 	fmt.Printf("Running scripts based on path names in %s\n", path)
@@ -111,24 +123,19 @@ outputs: []string - array of paths it attempts to execute
 
 	l := logging.Logger
 	scanner := bufio.NewScanner(file)
-	outputChannel := make(chan ScriptData)
 	scriptData := ScriptData{}
-	scriptCount := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 		if _, err := os.Stat(line); errors.Is(err, os.ErrNotExist) {
 			log.Fatal(errors.New("Script does not exist: " + line))
+		} else if isScript, shell := checkShebang(line); !isScript {
+			fmt.Printf("Not shebang: %s\n", scriptData.path);
 		} else {
-			lines = append(lines, line)
 			scriptData.path = line
-			scriptCount++
-			go executeAndOutput(l, scriptData, outputChannel)
+			scriptData.shell = shell
+			scriptList = append(scriptList, scriptData)
 		}
-
 	}
-	for i := 0; i<scriptCount; i++{
-		fmt.Print((<-outputChannel).output)
-	}
-	fmt.Println()
-	return lines, scanner.Err()
+	runScriptList(l, scriptList)
+	return scriptList, scanner.Err()
 }
