@@ -18,13 +18,13 @@ const whitelistPath = "/usr/share/spirit-box/whitelist"
 
 type UnitWatcher struct {
 	Units   []*UnitInfo
-	dConn   *dbus.Conn
+	DConn   *dbus.Conn
 	started time.Time
 }
 
 func (uw *UnitWatcher) UpdateAll() {
 	for _, u := range uw.Units {
-		properties, err := uw.dConn.GetUnitProperties(u.Name)
+		properties, err := uw.DConn.GetUnitProperties(u.Name)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -49,7 +49,7 @@ func (uw *UnitWatcher) UpdateAll() {
 
 func (uw *UnitWatcher) InitializeStates() {
 	for _, u := range uw.Units {
-		properties, err := uw.dConn.GetUnitProperties(u.Name)
+		properties, err := uw.DConn.GetUnitProperties(u.Name)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -88,7 +88,7 @@ func (uw *UnitWatcher) NumUnits() int {
 func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 	units := LoadWhitelist(whitelistPath)
 	newUW := &UnitWatcher{
-		dConn:   dConn,
+		DConn:   dConn,
 		Units:   units,
 		started: time.Now(),
 	}
@@ -96,6 +96,7 @@ func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 	return newUW
 }
 
+// Basic data for a unit's state.
 type UnitInfo struct {
 	Name            string
 	SubStateDesired string // service will be considered ready when this substate is met.
