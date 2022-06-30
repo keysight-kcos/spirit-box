@@ -31,7 +31,7 @@ func NewLogEvent(desc string, obj LogObject) *LogEvent {
 }
 
 func (le *LogEvent) LogLine() string {
-	return fmt.Sprintf("%s: %s", FormatTime(le.StartTime), le.Obj.LogLine())
+	return fmt.Sprintf("%s: %s", FormatTimeNano(le.StartTime), le.Obj.LogLine())
 }
 
 type LogEvents struct {
@@ -92,7 +92,7 @@ func InitLogger() {
 
 func CreateLogFile() *os.File {
 	cur_time := time.Now()
-	filename := FormatTime(cur_time)
+	filename := FormatTime(cur_time)+".log"
 
 	file, err := os.OpenFile(LOG_PATH+filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -105,7 +105,20 @@ func CreateLogFile() *os.File {
 
 func FormatTime(cur_time time.Time) string {
 	return fmt.Sprintf(
-		"%d-%02d-%02d_%02d:%02d:%02d.%d.log",
+		"%d-%02d-%02d_%02d:%02d:%02d",
+		cur_time.Year(),
+		cur_time.Month(),
+		cur_time.Day(),
+		cur_time.Hour(),
+		cur_time.Minute(),
+		cur_time.Second(),
+	)
+}
+
+// Format time with nanosecond precision.
+func FormatTimeNano(cur_time time.Time) string {
+	return fmt.Sprintf(
+		"%d-%02d-%02d_%02d:%02d:%02d.%d",
 		cur_time.Year(),
 		cur_time.Month(),
 		cur_time.Day(),
