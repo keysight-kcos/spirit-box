@@ -9,22 +9,26 @@ import(
 	"errors"
 	"bufio"
 	"spirit-box/logging"
+	"encoding/json"
 )
 
 type ScriptData struct{
-	PID int
-	path string
-	shell string
-	startTime int
-	endTime int
-	output string
-	exitcode int
-	priority int
+	Path string
+	Shell string
+	Priority int
+	Output string
+	Pid int
+	StartTime int
+	EndTime int
+	Exitcode int
 }
 
 func RunAllScripts() {
+	l := logging.Logger
 	runScriptsInDir()
-	loadScriptList()
+	scriptList, _ := loadScriptJson()
+	//scriptList, _ := loadScriptList()
+	runScriptList(l, scriptList)
 }
 
 func checkShebang(line string) (bool, string){
@@ -41,7 +45,7 @@ outputs: bool - true if shebang exists
 	scanner := bufio.NewScanner(file)
 	scanner.Scan()
 	shebang := scanner.Text()
-	if len(shebang) >= 2 && shebang[:2] != "#!"{
+	if len(shebang) < 2 || shebang[:2] != "#!"{
 		return false, ""
 	}
 	shell := shebang[2:]
@@ -53,14 +57,14 @@ func executeAndOutput(l *log.Logger, scriptData ScriptData, co chan<- ScriptData
 inputs: *log.Logger - logger
         ScriptData - data including path to script
 	chan<-ScriptData - channel to collect goroutine output ScriptData*/
-	fmt.Println("Running script " + scriptData.path + "...")
-	out, err := exec.Command(scriptData.shell, scriptData.path).Output()
+	fmt.Println("Running script " + scriptData.Path + "...")
+	out, err := exec.Command(scriptData.Shell, scriptData.Path).Output()
 		if err != nil {
 		log.Fatal(err)
 	}
-	scriptData.output = string(out)
+	scriptData.Output = string(out)
 	co <- scriptData
-	l.Printf("Ran %s", scriptData.path)
+	l.Printf("Ran %s", scriptData.Path)
 }
 
 func runScriptsInDir(){
@@ -76,15 +80,15 @@ func runScriptsInDir(){
 		if !item.IsDir() {
 			isScript, shell := checkShebang(scriptDir+item.Name())
 			if isScript {
-				scriptData.shell = shell
-				scriptData.path = scriptDir+item.Name()
+				scriptData.Shell = shell
+				scriptData.Path = scriptDir+item.Name()
 				scriptCount++
 				go executeAndOutput(l, scriptData, outputChannel)
 			}
 		}
 	}
 	for i := 0; i<scriptCount; i++{
-		fmt.Print((<-outputChannel).output)
+		fmt.Print((<-outputChannel).Output)
 	}
 	fmt.Println()
 }
@@ -99,8 +103,24 @@ inputs: *log.Logger - log
 		go executeAndOutput(l, scriptList[i], outputChannel)
 	}
 	for i := 0; i<len(scriptList); i++{
-		fmt.Print((<-outputChannel).output)
+		fmt.Print((<-outputChannel).Output)
 	}
+}
+
+func loadScriptJson() ([]ScriptData, error) {
+/*executes scripts listed as paths in scripts.json file
+outputs: []string - array of paths it attempts to execute
+         error - errors*/
+	content, err := ioutil.ReadFile("/usr/share/spirit-box/scripts.json")
+	if err != nil{
+		log.Fatal(err)
+	}
+	var scriptList []ScriptData
+	err = json.Unmarshal(content, &scriptList)
+	if err != nil {
+        	fmt.Println(err)
+	}
+	return scriptList, err
 }
 
 func loadScriptList() ([]ScriptData, error) {
@@ -121,7 +141,6 @@ outputs: []string - array of paths it attempts to execute
 	}
 	defer file.Close()
 
-	l := logging.Logger
 	scanner := bufio.NewScanner(file)
 	scriptData := ScriptData{}
 	for scanner.Scan() {
@@ -129,13 +148,12 @@ outputs: []string - array of paths it attempts to execute
 		if _, err := os.Stat(line); errors.Is(err, os.ErrNotExist) {
 			log.Fatal(errors.New("Script does not exist: " + line))
 		} else if isScript, shell := checkShebang(line); !isScript {
-			fmt.Printf("Not shebang: %s\n", scriptData.path);
+			fmt.Printf("Not shebang: %s\n", line);
 		} else {
-			scriptData.path = line
-			scriptData.shell = shell
+			scriptData.Path = line
+			scriptData.Shell = shell
 			scriptList = append(scriptList, scriptData)
 		}
 	}
-	runScriptList(l, scriptList)
 	return scriptList, scanner.Err()
 }
