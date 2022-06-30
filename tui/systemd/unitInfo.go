@@ -8,35 +8,42 @@ import (
 	g "spirit-box/tui/globals"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
 )
 
 type unitInfo struct {
-	name       string
-	keys       []string
-	properties map[string]interface{}
+	name     string
+	viewport viewport.Model
 }
 
-func InitUnitInfo(dConn *dbus.Conn, name string) unitInfo {
+func InitUnitInfo(dConn *dbus.Conn, name string, width, height int) unitInfo {
 	u := unitInfo{}
-	var err error
 	u.name = name
-	u.properties, err = dConn.GetUnitProperties(u.name)
+	properties, err := dConn.GetUnitProperties(u.name)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	u.keys = make([]string, len(u.properties))
+	keys := make([]string, len(properties))
 	i := 0
-	for k := range u.properties {
-		u.keys[i] = k
+	for k := range properties {
+		keys[i] = k
 		i++
 	}
-	sort.Slice(u.keys, func(i, j int) bool {
-		return u.keys[i] < u.keys[j]
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
 	})
 
+	var b strings.Builder
+	for _, key := range keys {
+		v := properties[key]
+		fmt.Fprintf(&b, "%s: %v\n", key, v)
+	}
+
+	u.viewport = viewport.New(width, height)
+	u.viewport.SetContent(b.String())
 	return u
 }
 
@@ -48,14 +55,12 @@ func (u unitInfo) Update(msg tea.Msg) (unitInfo, tea.Cmd) {
 			return u, func() tea.Msg { return g.SwitchScreenMsg(g.Systemd) }
 		}
 	}
-	return u, nil
+
+	var cmd tea.Cmd
+	u.viewport, cmd = u.viewport.Update(msg)
+	return u, cmd
 }
 
 func (u unitInfo) View() string {
-	var b strings.Builder
-	for _, key := range u.keys {
-		v := u.properties[key]
-		fmt.Fprintf(&b, "%s: %v\n", key, v)
-	}
-	return b.String()
+	return u.viewport.View()
 }

@@ -69,6 +69,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case g.SystemdUpdateMsg:
 		m.systemd, cmd = m.systemd.Update(msg)
 		cmds = append(cmds, cmd)
+	case tea.WindowSizeMsg:
+		m.systemd, cmd = m.systemd.Update(msg)
 	}
 
 	return m, tea.Batch(cmds...)

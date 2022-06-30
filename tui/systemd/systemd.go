@@ -27,6 +27,8 @@ type Model struct {
 	unitInfo    unitInfo
 	curScreen   g.Screen
 	cursorIndex int
+	width       int
+	height      int
 }
 
 func New(dConn *dbus.Conn) Model {
@@ -64,7 +66,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.cursorIndex--
 				}
 			case "enter":
-				m.unitInfo = InitUnitInfo(m.watcher.DConn, m.watcher.Units[m.cursorIndex].Name)
+				m.unitInfo = InitUnitInfo(m.watcher.DConn, m.watcher.Units[m.cursorIndex].Name, m.width, m.height)
 				return m, func() tea.Msg { return g.SwitchScreenMsg(g.UnitInfoScreen) }
 			case "ctrl+c":
 				return m, tea.Quit
@@ -80,6 +82,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case g.SwitchScreenMsg:
 		m.curScreen = g.Screen(msg)
 		log.Printf("From systemd, SwitchScreenMsg: %s", m.curScreen.String())
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
 	}
 
 	return m, cmd
