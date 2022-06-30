@@ -59,7 +59,7 @@ func (s serviceModel) Update(msg tea.Msg) (serviceModel, tea.Cmd) {
 
 func (s serviceModel) View() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Watching %d services (%.4fs):\n\n", s.watcher.NumUnits(), s.watcher.Elapsed().Seconds())
+	fmt.Fprintf(&b, "Watching %d services (%.0fs):\n\n", s.watcher.NumUnits(), s.watcher.Elapsed().Seconds())
 
 	var readyStatus string
 	for _, u := range s.watcher.Units {
@@ -75,7 +75,7 @@ func (s serviceModel) View() string {
 			alignRight(len("not-found"), u.LoadState),
 			alignRight(len("activating"), u.ActiveState),
 			alignRight(len("running"), u.SubState),
-			alignRight(len("WATCHING"), readyStatus),
+			alignRight(len("NOT READY"), readyStatus),
 		)
 		fmt.Fprintf(&b, "%s%s %s\n", left, alignRight(80-len(left), right), u.Description)
 	}

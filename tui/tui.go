@@ -30,6 +30,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch m.curScreen {
 	case TopLevel:
 		switch msg := msg.(type) {
@@ -54,16 +55,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		}
-	//case Services:
+	case Services:
+		m.services, cmd = m.services.Update(msg)
 	}
 
 	switch msg := msg.(type) {
 		case switchScreenMsg:
 			m.curScreen = Screen(msg)
+		case systemdUpdateMsg:
+			m.services, cmd = m.services.Update(msg)
 	}
 
-	var cmd tea.Cmd
-	m.services, cmd = m.services.Update(msg)
 	return m, cmd
 }
 
