@@ -4,20 +4,21 @@ package services
 import (
 	"bufio"
 	"errors"
-	"github.com/coreos/go-systemd/v22/dbus"
-	"log"
-	"spirit-box/logging"
 	"fmt"
+	"log"
 	"os"
+	"spirit-box/logging"
 	"strings"
 	"time"
+
+	"github.com/coreos/go-systemd/v22/dbus"
 )
 
 const whitelistPath = "/usr/share/spirit-box/whitelist"
 
 type UnitWatcher struct {
-	Units []*UnitInfo
-	dConn *dbus.Conn
+	Units   []*UnitInfo
+	dConn   *dbus.Conn
 	started time.Time
 }
 
@@ -87,8 +88,8 @@ func (uw *UnitWatcher) NumUnits() int {
 func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 	units := LoadWhitelist(whitelistPath)
 	newUW := &UnitWatcher{
-		dConn: dConn,
-		Units: units,
+		dConn:   dConn,
+		Units:   units,
 		started: time.Now(),
 	}
 	newUW.InitializeStates()
@@ -97,18 +98,18 @@ func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 
 type UnitInfo struct {
 	Name            string
-	SubStateDesired string // service will be considered ready when this substate is met. 
-						   // set to "any" if any substate is okay.
-	Ready           bool   // observed substate matches desired substate
-	LoadState       string
-	ActiveState     string
-	SubState        string
-	Description     string
-	At              time.Time
+	SubStateDesired string // service will be considered ready when this substate is met.
+	// set to "any" if any substate is okay.
+	Ready       bool // observed substate matches desired substate
+	LoadState   string
+	ActiveState string
+	SubState    string
+	Description string
+	At          time.Time
 }
 
 // Check if unit info needs to be updated, log if it was changed.
-func (u *UnitInfo) update(updates[3]string) {
+func (u *UnitInfo) update(updates [3]string) {
 	from1, from2, from3, from4 := u.LoadState, u.ActiveState, u.SubState, u.Ready
 	changed := false
 	if updates[0] != u.LoadState {
@@ -141,29 +142,33 @@ func (u *UnitInfo) update(updates[3]string) {
 }
 
 type UnitStateChange struct {
-	Name            string
-	SubStateDesired string
-	Ready           [2]bool
-	LoadState       [2]string
-	ActiveState     [2]string
-	SubState        [2]string
-	Description     string
+	Name            string    `json:"name"`
+	SubStateDesired string    `json:"subStateDesired"`
+	Ready           [2]bool   `json:"ready"`
+	LoadState       [2]string `json:"loadState"`
+	ActiveState     [2]string `json:"activeState"`
+	SubState        [2]string `json:"subState"`
+	Description     string    `json:"description"`
 }
 
 func (u *UnitInfo) GetStateChange(from1, from2, from3 string, from4 bool) *UnitStateChange {
 	return &UnitStateChange{
-		Name: u.Name,
+		Name:            u.Name,
 		SubStateDesired: u.SubStateDesired,
-		LoadState: [2]string{from1, u.LoadState},
-		ActiveState: [2]string{from2, u.ActiveState},
-		SubState: [2]string{from3, u.SubState},
-		Ready: [2]bool{from4, u.Ready},
-		Description: u.Description,
+		LoadState:       [2]string{from1, u.LoadState},
+		ActiveState:     [2]string{from2, u.ActiveState},
+		SubState:        [2]string{from3, u.SubState},
+		Ready:           [2]bool{from4, u.Ready},
+		Description:     u.Description,
 	}
 }
 
 func (u *UnitStateChange) LogLine() string {
 	return fmt.Sprintf("%s: %s %s %s %s", u.Name, u.LoadState[1], u.ActiveState[1], u.SubState[1], u.Description)
+}
+
+func (u *UnitStateChange) GetObjType() string {
+	return "SystemD Unit state change."
 }
 
 func LoadWhitelist(filename string) []*UnitInfo {

@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
-	"github.com/coreos/go-systemd/v22/dbus"
-	tea "github.com/charmbracelet/bubbletea"
 	"spirit-box/logging"
 	"spirit-box/tui"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/coreos/go-systemd/v22/dbus"
 )
 
 func main() {

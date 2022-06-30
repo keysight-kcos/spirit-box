@@ -1,32 +1,36 @@
 package logging
 
 import (
-	 "encoding/json"
-	 "log"
+	"encoding/json"
 	"fmt"
-	 "io"
-	 "os"
+	"io"
+	"log"
+	"os"
 	"sync"
 	"time"
 )
 
 type LogObject interface {
 	LogLine() string
+	GetObjType() string
 }
 
 type LogEvent struct {
-	StartTime time.Time
-	EndTime time.Time
-	Desc string
-	Obj LogObject
+	StartTime time.Time `json:"startTime"`
+	EndTime   time.Time `json:"endTime"`
+	Desc      string    `json:"description"`
+	ObjType   string    `json:"objectType"`
+	Obj       LogObject `json:"object"`
 }
 
+// Start and end times should be configured using the pointer returned.
 func NewLogEvent(desc string, obj LogObject) *LogEvent {
 	return &LogEvent{
 		StartTime: time.Now(),
-		EndTime: time.Now(),
-		Desc: desc,
-		Obj: obj,
+		EndTime:   time.Now(),
+		Desc:      desc,
+		ObjType:   obj.GetObjType(),
+		Obj:       obj,
 	}
 }
 
@@ -36,7 +40,7 @@ func (le *LogEvent) LogLine() string {
 
 type LogEvents struct {
 	mu     sync.Mutex
-	Events []*LogEvent
+	Events []*LogEvent `json:"events"`
 }
 
 var Logs *LogEvents
@@ -66,33 +70,28 @@ const (
 )
 
 type MessageLog struct {
-	Message string
+	Message string `json:"message"`
 }
 
 func (m *MessageLog) LogLine() string {
 	return m.Message
 }
 
+func (m *MessageLog) GetObjType() string {
+	return "Message"
+}
+
 func InitLogger() {
 	events := make([]*LogEvent, 0, 1000)
-	Logs =  &LogEvents{Events: events}
+	Logs = &LogEvents{Events: events}
 
 	initStr := "Starting spirit-box..."
-	Logs.AddLogEvent(&LogEvent{
-		StartTime: time.Now(),
-		EndTime: time.Now(),
-		Desc: initStr,
-		Obj: &MessageLog{initStr},
-	})
-	/*
-	log.Printf("Length of Logs now: %d", Logs.Length())
-	log.Print(Logs.Events[0].LogLine())
-	*/
+	Logs.AddLogEvent(NewLogEvent(initStr, &MessageLog{initStr}))
 }
 
 func CreateLogFile() *os.File {
 	cur_time := time.Now()
-	filename := FormatTime(cur_time)+".log"
+	filename := FormatTime(cur_time) + ".log"
 
 	file, err := os.OpenFile(LOG_PATH+filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
