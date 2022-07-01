@@ -4,4 +4,4 @@ set -x
 
 systemctl enable disableSystemdLogging.service
 systemctl enable spirit-box@tty1.service
-systemctl enable spirit-box@ttys0.service
+systemctl enable spirit-box@ttyS0.service
