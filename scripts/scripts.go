@@ -10,6 +10,7 @@ import(
 	"bufio"
 	"spirit-box/logging"
 	"encoding/json"
+	"sort"
 )
 
 type ScriptData struct{
@@ -23,10 +24,16 @@ type ScriptData struct{
 	Exitcode int
 }
 
+type ByPriority []ScriptData
+func (d ByPriority) Len() int {return len(d)}
+func (d ByPriority) Less(i, j int) bool {return d[i].Priority < d[j].Priority}
+func (d ByPriority) Swap(i, j int) {d[i], d[j] = d[j], d[i]}
+
 func RunAllScripts() {
 	l := logging.Logger
 	runScriptsInDir()
 	scriptList, _ := loadScriptJson()
+	scriptList = sanitizeScriptList(scriptList)
 	//scriptList, _ := loadScriptList()
 	runScriptList(l, scriptList)
 }
@@ -36,7 +43,6 @@ func checkShebang(line string) (bool, string){
 inputs: string - the file path
 outputs: bool - true if shebang exists
          string - the path of the shell to use*/
-	isScript := true
 	file, err := os.Open(line)
 	if err != nil {
 		log.Fatal(err)
@@ -49,17 +55,17 @@ outputs: bool - true if shebang exists
 		return false, ""
 	}
 	shell := shebang[2:]
-	return isScript, shell
+	return true, shell
 }
 
-func executeAndOutput(l *log.Logger, scriptData ScriptData, co chan<- ScriptData) {
+func executeAndChan(l *log.Logger, scriptData ScriptData, co chan<- ScriptData) {
 /*executes a script
 inputs: *log.Logger - logger
         ScriptData - data including path to script
 	chan<-ScriptData - channel to collect goroutine output ScriptData*/
 	fmt.Println("Running script " + scriptData.Path + "...")
 	out, err := exec.Command(scriptData.Shell, scriptData.Path).Output()
-		if err != nil {
+	if err != nil {
 		log.Fatal(err)
 	}
 	scriptData.Output = string(out)
@@ -83,7 +89,7 @@ func runScriptsInDir(){
 				scriptData.Shell = shell
 				scriptData.Path = scriptDir+item.Name()
 				scriptCount++
-				go executeAndOutput(l, scriptData, outputChannel)
+				go executeAndChan(l, scriptData, outputChannel)
 			}
 		}
 	}
@@ -100,26 +106,51 @@ inputs: *log.Logger - log
 	outputChannel := make(chan ScriptData)
 
 	for i:= 0; i<len(scriptList); i++{
-		go executeAndOutput(l, scriptList[i], outputChannel)
+		go executeAndChan(l, scriptList[i], outputChannel)
 	}
 	for i := 0; i<len(scriptList); i++{
 		fmt.Print((<-outputChannel).Output)
 	}
 }
 
+func sanitizeScriptList(scriptList []ScriptData) ([]ScriptData){
+/*sanitizes scripts in list
+inputs: []ScriptData - list of scripts
+outputs: []ScriptData - sanitized list*/
+	var sanitized []ScriptData
+	for i := 0; i<len(scriptList); i++{
+		scriptData := scriptList[i]
+		if _, err := os.Stat(scriptData.Path); errors.Is(err, os.ErrNotExist) {
+			log.Fatal(errors.New("Script does not exist: " + scriptData.Path))
+		} else if isScript, shell := checkShebang(scriptData.Path); !isScript {
+			fmt.Printf("Not shebang: %s\n", scriptData.Path);
+		} else {
+			scriptData.Shell = shell
+			sanitized = append(sanitized, scriptData)
+		}
+	}
+	return sanitized
+}
+
 func loadScriptJson() ([]ScriptData, error) {
 /*executes scripts listed as paths in scripts.json file
 outputs: []string - array of paths it attempts to execute
          error - errors*/
-	content, err := ioutil.ReadFile("/usr/share/spirit-box/scripts.json")
+	path := "/usr/share/spirit-box/scripts.json"
+	var scriptList []ScriptData
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist){
+		fmt.Println("No script json.")
+		return scriptList, err
+	}
+	content, err := ioutil.ReadFile(path)
 	if err != nil{
 		log.Fatal(err)
 	}
-	var scriptList []ScriptData
 	err = json.Unmarshal(content, &scriptList)
 	if err != nil {
         	fmt.Println(err)
 	}
+	sort.Sort(ByPriority(scriptList))
 	return scriptList, err
 }
 
