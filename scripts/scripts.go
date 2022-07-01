@@ -32,10 +32,11 @@ func (d ByPriority) Swap(i, j int) {d[i], d[j] = d[j], d[i]}
 func RunAllScripts() {
 	l := logging.Logger
 	runScriptsInDir()
-	scriptList, _ := loadScriptJson()
+	scriptList, _ := loadScriptJson(l)
 	scriptList = sanitizeScriptList(scriptList)
+	lists := organizeLists(scriptList)
 	//scriptList, _ := loadScriptList()
-	runScriptList(l, scriptList)
+	runScriptList(l, lists)
 }
 
 func checkShebang(line string) (bool, string){
@@ -61,7 +62,7 @@ outputs: bool - true if shebang exists
 func executeAndChan(l *log.Logger, scriptData ScriptData, co chan<- ScriptData) {
 /*executes a script
 inputs: *log.Logger - logger
-        ScriptData - data including path to script
+        ScriptData - data including path to script and shell
 	chan<-ScriptData - channel to collect goroutine output ScriptData*/
 	fmt.Println("Running script " + scriptData.Path + "...")
 	out, err := exec.Command(scriptData.Shell, scriptData.Path).Output()
@@ -99,18 +100,43 @@ func runScriptsInDir(){
 	fmt.Println()
 }
 
-func runScriptList(l *log.Logger, scriptList []ScriptData) {
+func runScriptList(l *log.Logger, scriptList [][]ScriptData) {
 /*runs scripts in array
 inputs: *log.Logger - log
-	[]ScriptData - list of scripts to run*/
+	[][]ScriptData - list of lists of scripts to run*/
 	outputChannel := make(chan ScriptData)
-
 	for i:= 0; i<len(scriptList); i++{
-		go executeAndChan(l, scriptList[i], outputChannel)
+		fmt.Printf("Running scripts of priority %d\n", scriptList[i][0].Priority)
+		for j:= 0; j<len(scriptList[i]); j++{
+			go executeAndChan(l, scriptList[i][j], outputChannel)
+		}
+		for j := 0; j<len(scriptList[i]); j++{
+			fmt.Print((<-outputChannel).Output)
+		}
 	}
+}
+
+func organizeLists(scriptList []ScriptData)([][]ScriptData){
+/*organizes scriptData into list of lists by priority
+inputs: []ScriptData - list of ScriptData ordered by priority
+outputs: [][]ScriptData - list of lists of ScriptData*/
+	var lists [][]ScriptData
+	if len(scriptList) < 1{
+		return lists
+	}
+	index := 0
+	currPrio := scriptList[0].Priority
+	lists = append(lists, []ScriptData{})
 	for i := 0; i<len(scriptList); i++{
-		fmt.Print((<-outputChannel).Output)
+		scriptData := scriptList[i]
+		if scriptData.Priority > currPrio{
+			index++
+			currPrio = scriptData.Priority
+			lists = append(lists, []ScriptData{})
+		}
+		lists[index] = append(lists[index], scriptData)
 	}
+	return lists
 }
 
 func sanitizeScriptList(scriptList []ScriptData) ([]ScriptData){
@@ -129,14 +155,16 @@ outputs: []ScriptData - sanitized list*/
 			sanitized = append(sanitized, scriptData)
 		}
 	}
+	sort.Sort(ByPriority(sanitized))
 	return sanitized
 }
 
-func loadScriptJson() ([]ScriptData, error) {
-/*executes scripts listed as paths in scripts.json file
-outputs: []string - array of paths it attempts to execute
+func loadScriptJson(l *log.Logger) ([]ScriptData, error) {
+/*loads scriptData listed in scripts.json file
+outputs: []ScriptData - array of scripts
          error - errors*/
 	path := "/usr/share/spirit-box/scripts.json"
+	fmt.Printf("Loading scripts based on path names in %s\n", path)
 	var scriptList []ScriptData
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist){
 		fmt.Println("No script json.")
@@ -148,15 +176,15 @@ outputs: []string - array of paths it attempts to execute
 	}
 	err = json.Unmarshal(content, &scriptList)
 	if err != nil {
-        	fmt.Println(err)
+		fmt.Println(err)
+		l.Printf("Error in scripts json: %s", err)
 	}
-	sort.Sort(ByPriority(scriptList))
 	return scriptList, err
 }
 
 func loadScriptList() ([]ScriptData, error) {
 /*executes scripts listed as paths in script file
-outputs: []string - array of paths it attempts to execute
+outputs: []ScriptData - array of scripts
          error - errors*/
 	var scriptList []ScriptData
 	path := "/usr/share/spirit-box/scripts"
