@@ -3,14 +3,12 @@ package systemd
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	g "spirit-box/tui/globals"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/coreos/go-systemd/v22/dbus"
 )
 
 type unitInfo struct {
@@ -18,13 +16,8 @@ type unitInfo struct {
 	viewport viewport.Model
 }
 
-func InitUnitInfo(dConn *dbus.Conn, name string, width, height int) unitInfo {
+func InitUnitInfo(properties map[string]interface{}, width, height int) unitInfo {
 	u := unitInfo{}
-	u.name = name
-	properties, err := dConn.GetUnitProperties(u.name)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	keys := make([]string, len(properties))
 	i := 0

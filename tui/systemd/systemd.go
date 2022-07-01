@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	lp "github.com/charmbracelet/lipgloss"
 	"github.com/coreos/go-systemd/v22/dbus"
@@ -27,34 +28,46 @@ type Model struct {
 	unitInfo    unitInfo
 	curScreen   g.Screen
 	cursorIndex int
+	spinner     spinner.Model
+	allReady    bool
 	width       int
 	height      int
 }
 
 func New(dConn *dbus.Conn) Model {
-	watcher := services.NewWatcher(dConn)
-	return Model{watcher: watcher, curScreen: g.Systemd, cursorIndex: 0}
+	watcher, allReady := services.NewWatcher(dConn)
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	return Model{
+		watcher:     watcher,
+		curScreen:   g.Systemd,
+		cursorIndex: 0,
+		spinner:     s,
+		allReady:    allReady,
+	}
 }
 
 func (m Model) UpdateCmd() tea.Cmd {
 	return func() tea.Msg {
-		m.watcher.UpdateAll()
+		<-m.watcher.Ready
+		allReady := m.watcher.UpdateAll()
 		time.Sleep(systemdInterval * time.Millisecond)
-		return g.SystemdUpdateMsg(struct{}{})
+		return g.SystemdUpdateMsg(allReady)
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.UpdateCmd()
+	return tea.Batch(m.UpdateCmd(), func() tea.Msg { return m.spinner.Tick() })
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
+	cmds := make([]tea.Cmd, 0)
 	switch m.curScreen {
 	case g.Systemd:
+		m.spinner, cmd = m.spinner.Update(msg)
+		cmds = append(cmds, cmd)
 		switch msg := msg.(type) {
-		case g.SystemdUpdateMsg:
-			return m, m.UpdateCmd()
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "j":
@@ -66,19 +79,27 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.cursorIndex--
 				}
 			case "enter":
-				m.unitInfo = InitUnitInfo(m.watcher.DConn, m.watcher.Units[m.cursorIndex].Name, m.width, m.height)
-				return m, func() tea.Msg { return g.SwitchScreenMsg(g.UnitInfoScreen) }
+				m.unitInfo = InitUnitInfo(m.watcher.Units[m.cursorIndex].Properties, m.width, m.height)
+				cmd := func() tea.Msg { return g.SwitchScreenMsg(g.UnitInfoScreen) }
+				cmds = append(cmds, cmd)
 			case "ctrl+c":
 				return m, tea.Quit
 			case "q":
-				return m, func() tea.Msg { return g.SwitchScreenMsg(g.TopLevel) }
+				cmd := func() tea.Msg { return g.SwitchScreenMsg(g.TopLevel) }
+				cmds = append(cmds, cmd)
 			}
 		}
 	case g.UnitInfoScreen:
 		m.unitInfo, cmd = m.unitInfo.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	switch msg := msg.(type) {
+	case g.SystemdUpdateMsg:
+		cmds = append(cmds, m.UpdateCmd())
+		//log.Printf("From systemd, SystemddUpdateMsg")
+		m.allReady = bool(msg)
+		return m, tea.Batch(cmds...)
 	case g.SwitchScreenMsg:
 		m.curScreen = g.Screen(msg)
 		log.Printf("From systemd, SwitchScreenMsg: %s", m.curScreen.String())
@@ -86,14 +107,24 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	}
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
 	var b strings.Builder
 	switch m.curScreen {
 	case g.Systemd:
-		fmt.Fprintf(&b, "Watching %d services (%.0fs):\n\n", m.watcher.NumUnits(), m.watcher.Elapsed().Seconds())
+		var info string
+		if m.allReady {
+			info = readyStyle.Render("All units are ready.")
+		} else {
+			info = notReadyStyle.Render(m.spinner.View())
+		}
+		fmt.Fprintf(&b, "Watching %d services (%.0fs): %s\n\n",
+			m.watcher.NumUnits(),
+			m.watcher.Elapsed().Seconds(),
+			info,
+		)
 
 		var readyStatus string
 		for i, u := range m.watcher.Units {

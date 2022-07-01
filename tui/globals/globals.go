@@ -2,7 +2,7 @@
 // Msgs, enums, etc.
 package globals
 
-type SystemdUpdateMsg struct{}
+type SystemdUpdateMsg bool // true when all units are ready
 
 type Screen int
 

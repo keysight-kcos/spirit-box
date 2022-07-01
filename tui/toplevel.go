@@ -9,6 +9,7 @@ import (
 	g "spirit-box/tui/globals"
 	"spirit-box/tui/systemd"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
 )
@@ -71,6 +72,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	case tea.WindowSizeMsg:
 		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	case spinner.TickMsg:
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)

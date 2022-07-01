@@ -20,9 +20,11 @@ type UnitWatcher struct {
 	Units   []*UnitInfo
 	DConn   *dbus.Conn
 	started time.Time
+	Ready   chan struct{}
 }
 
-func (uw *UnitWatcher) UpdateAll() {
+func (uw *UnitWatcher) UpdateAll() bool {
+	allReady := true
 	for _, u := range uw.Units {
 		properties, err := uw.DConn.GetUnitProperties(u.Name)
 		if err != nil {
@@ -43,11 +45,19 @@ func (uw *UnitWatcher) UpdateAll() {
 			log.Fatal(errors.New("Type assertion failed: properties[\"SubState\"] is not a string."))
 		}
 
-		u.update([3]string{s1, s2, s3})
+		changed := u.update([3]string{s1, s2, s3})
+		if changed {
+			u.Properties = properties
+		}
+		allReady = allReady && u.Ready
 	}
+	go func() { uw.Ready <- struct{}{} }()
+
+	return allReady
 }
 
-func (uw *UnitWatcher) InitializeStates() {
+func (uw *UnitWatcher) InitializeStates() bool {
+	allReady := true
 	for _, u := range uw.Units {
 		properties, err := uw.DConn.GetUnitProperties(u.Name)
 		if err != nil {
@@ -72,9 +82,13 @@ func (uw *UnitWatcher) InitializeStates() {
 			log.Fatal(errors.New("Type assertion failed: properties[\"Description\"] is not a string."))
 		}
 		u.Description = s4
+		u.Properties = properties
 
 		u.update([3]string{s1, s2, s3})
+		allReady = allReady && u.Ready
 	}
+	go func() { uw.Ready <- struct{}{} }()
+	return allReady
 }
 
 func (uw *UnitWatcher) Elapsed() time.Duration {
@@ -85,15 +99,16 @@ func (uw *UnitWatcher) NumUnits() int {
 	return len(uw.Units)
 }
 
-func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
+func NewWatcher(dConn *dbus.Conn) (*UnitWatcher, bool) {
 	units := LoadWhitelist(whitelistPath)
 	newUW := &UnitWatcher{
 		DConn:   dConn,
 		Units:   units,
 		started: time.Now(),
+		Ready:   make(chan struct{}),
 	}
-	newUW.InitializeStates()
-	return newUW
+	allReady := newUW.InitializeStates()
+	return newUW, allReady
 }
 
 // Basic data for a unit's state.
@@ -106,11 +121,12 @@ type UnitInfo struct {
 	ActiveState string
 	SubState    string
 	Description string
+	Properties  map[string]interface{}
 	At          time.Time
 }
 
 // Check if unit info needs to be updated, log if it was changed.
-func (u *UnitInfo) update(updates [3]string) {
+func (u *UnitInfo) update(updates [3]string) bool {
 	from1, from2, from3, from4 := u.LoadState, u.ActiveState, u.SubState, u.Ready
 	changed := false
 	if updates[0] != u.LoadState {
@@ -140,6 +156,8 @@ func (u *UnitInfo) update(updates [3]string) {
 		u.At = le.EndTime
 		logging.Logs.AddLogEvent(le)
 	}
+
+	return changed
 }
 
 type UnitStateChange struct {
@@ -188,7 +206,7 @@ func LoadWhitelist(filename string) []*UnitInfo {
 			log.Fatal(errors.New("Line in whitelist did not match <unit name>:<substate> format."))
 		}
 
-		units = append(units, &UnitInfo{split[0], split[1], false, "", "", "", "", time.Now()})
+		units = append(units, &UnitInfo{split[0], split[1], false, "", "", "", "", nil, time.Now()})
 	}
 	return units
 }
