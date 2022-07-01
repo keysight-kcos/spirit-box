@@ -37,7 +37,7 @@ type Model struct {
 func New(dConn *dbus.Conn) Model {
 	watcher, allReady := services.NewWatcher(dConn)
 	s := spinner.New()
-	s.Spinner = spinner.Dot
+	s.Spinner = spinner.Line
 	return Model{
 		watcher:     watcher,
 		curScreen:   g.Systemd,

@@ -23,8 +23,6 @@ func main() {
 	log.Print("Starting spirit-box...")
 
 	logging.InitLogger()
-	logFile := logging.CreateLogFile()
-	defer logFile.Close()
 
 	dConn, err := dbus.New()
 	if err != nil {
@@ -34,13 +32,15 @@ func main() {
 
 	tui.StartTUI(dConn)
 
-	fmt.Printf("\nWrote JSON log entries to %s.\n", logFile.Name())
-
 	// Dump log lines to stdout for dev purposes.
 	fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())
 	for _, event := range logging.Logs.Events {
 		fmt.Println(event.LogLine())
 	}
 
+	logFile := logging.CreateLogFile()
+	defer logFile.Close()
+
 	logging.Logs.WriteJSON(logFile)
+	fmt.Printf("\nWrote JSON log entries to %s.\n", logFile.Name())
 }
