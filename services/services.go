@@ -9,6 +9,7 @@ import (
 	"os"
 	"spirit-box/logging"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/go-systemd/v22/dbus"
@@ -20,10 +21,12 @@ type UnitWatcher struct {
 	Units   []*UnitInfo
 	DConn   *dbus.Conn
 	started time.Time
-	Ready   chan struct{}
+	mu      sync.Mutex
 }
 
 func (uw *UnitWatcher) UpdateAll() bool {
+	uw.mu.Lock()
+	defer uw.mu.Unlock()
 	allReady := true
 	for _, u := range uw.Units {
 		properties, err := uw.DConn.GetUnitProperties(u.Name)
@@ -51,44 +54,57 @@ func (uw *UnitWatcher) UpdateAll() bool {
 		}
 		allReady = allReady && u.Ready
 	}
-	go func() { uw.Ready <- struct{}{} }()
 
 	return allReady
 }
 
 func (uw *UnitWatcher) InitializeStates() bool {
+	uw.mu.Lock()
+	defer uw.mu.Unlock()
 	allReady := true
 	for _, u := range uw.Units {
-		properties, err := uw.DConn.GetUnitProperties(u.Name)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// type assertions
-		s1, ok := properties["LoadState"].(string)
-		if !ok {
-			log.Fatal(errors.New("Type assertion failed: properties[\"LoadState\"] is not a string."))
-		}
-		s2, ok := properties["ActiveState"].(string)
-		if !ok {
-			log.Fatal(errors.New("Type assertion failed: properties[\"ActiveState\"] is not a string."))
-		}
-		s3, ok := properties["SubState"].(string)
-		if !ok {
-			log.Fatal(errors.New("Type assertion failed: properties[\"SubState\"] is not a string."))
-		}
-		s4, ok := properties["Description"].(string)
-		if !ok {
-			log.Fatal(errors.New("Type assertion failed: properties[\"Description\"] is not a string."))
-		}
-		u.Description = s4
-		u.Properties = properties
-
-		u.update([3]string{s1, s2, s3})
+		uw.InitializeState(u)
 		allReady = allReady && u.Ready
 	}
-	go func() { uw.Ready <- struct{}{} }()
 	return allReady
+}
+
+func (uw *UnitWatcher) InitializeState(u *UnitInfo) {
+	properties, err := uw.DConn.GetUnitProperties(u.Name)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// type assertions
+	s1, ok := properties["LoadState"].(string)
+	if !ok {
+		log.Fatal(errors.New("Type assertion failed: properties[\"LoadState\"] is not a string."))
+	}
+	s2, ok := properties["ActiveState"].(string)
+	if !ok {
+		log.Fatal(errors.New("Type assertion failed: properties[\"ActiveState\"] is not a string."))
+	}
+	s3, ok := properties["SubState"].(string)
+	if !ok {
+		log.Fatal(errors.New("Type assertion failed: properties[\"SubState\"] is not a string."))
+	}
+	s4, ok := properties["Description"].(string)
+	if !ok {
+		log.Fatal(errors.New("Type assertion failed: properties[\"Description\"] is not a string."))
+	}
+	u.Description = s4
+	u.Properties = properties
+
+	u.update([3]string{s1, s2, s3})
+}
+
+func (uw *UnitWatcher) AddUnit(name string) {
+	uw.mu.Lock()
+	defer uw.mu.Unlock()
+	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, time.Now()}
+	uw.InitializeState(newUnit)
+	uw.Units = append(uw.Units, newUnit)
+	// Change logic for initialization?
 }
 
 func (uw *UnitWatcher) Elapsed() time.Duration {
@@ -105,7 +121,6 @@ func NewWatcher(dConn *dbus.Conn) (*UnitWatcher, bool) {
 		DConn:   dConn,
 		Units:   units,
 		started: time.Now(),
-		Ready:   make(chan struct{}),
 	}
 	allReady := newUW.InitializeStates()
 	return newUW, allReady

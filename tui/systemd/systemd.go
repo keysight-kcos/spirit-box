@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	lp "github.com/charmbracelet/lipgloss"
 	"github.com/coreos/go-systemd/v22/dbus"
@@ -24,32 +25,36 @@ var alignLeftStyle = lp.NewStyle().Align(lp.Left)
 const systemdInterval = 500 // time between updates in milliseconds
 
 type Model struct {
-	watcher     *services.UnitWatcher
-	unitInfo    unitInfo
-	curScreen   g.Screen
-	cursorIndex int
-	spinner     spinner.Model
-	allReady    bool
-	width       int
-	height      int
+	watcher           *services.UnitWatcher
+	unitInfo          unitInfo
+	curScreen         g.Screen
+	cursorIndex       int
+	spinner           spinner.Model
+	textinput         textinput.Model
+	textinputSelected bool
+	allReady          bool
+	width             int
+	height            int
 }
 
 func New(dConn *dbus.Conn) Model {
 	watcher, allReady := services.NewWatcher(dConn)
 	s := spinner.New()
 	s.Spinner = spinner.Line
+	t := textinput.New()
+	t.Placeholder = "Press \"/\" to add more units to watch"
 	return Model{
 		watcher:     watcher,
 		curScreen:   g.Systemd,
 		cursorIndex: 0,
 		spinner:     s,
+		textinput:   t,
 		allReady:    allReady,
 	}
 }
 
 func (m Model) UpdateCmd() tea.Cmd {
 	return func() tea.Msg {
-		<-m.watcher.Ready
 		allReady := m.watcher.UpdateAll()
 		time.Sleep(systemdInterval * time.Millisecond)
 		return g.SystemdUpdateMsg(allReady)
@@ -69,24 +74,49 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "j":
-				if m.cursorIndex < len(m.watcher.Units)-1 {
-					m.cursorIndex++
+			if m.textinputSelected {
+				switch msg.String() {
+				case "/", "esc":
+					m.textinputSelected = false
+					m.textinput.Blur()
+					m.textinput.SetValue("")
+					m.textinput.SetCursorMode(textinput.CursorHide)
+				case "enter":
+					m.textinputSelected = false
+					m.textinput.Blur()
+					m.watcher.AddUnit(m.textinput.Value())
+					m.textinput.SetValue("")
+					m.textinput.SetCursorMode(textinput.CursorHide)
+					cmds = append(cmds, m.UpdateCmd())
+					return m, tea.Batch(cmds...)
 				}
-			case "k":
-				if m.cursorIndex > 0 {
-					m.cursorIndex--
+				if m.textinputSelected {
+					m.textinput, cmd = m.textinput.Update(msg)
+					cmds = append(cmds, cmd)
 				}
-			case "enter":
-				m.unitInfo = InitUnitInfo(m.watcher.Units[m.cursorIndex].Properties, m.width, m.height)
-				cmd := func() tea.Msg { return g.SwitchScreenMsg(g.UnitInfoScreen) }
-				cmds = append(cmds, cmd)
-			case "ctrl+c":
-				return m, tea.Quit
-			case "q":
-				cmd := func() tea.Msg { return g.SwitchScreenMsg(g.TopLevel) }
-				cmds = append(cmds, cmd)
+			} else {
+				switch msg.String() {
+				case "j":
+					if m.cursorIndex < len(m.watcher.Units)-1 {
+						m.cursorIndex++
+					}
+				case "k":
+					if m.cursorIndex > 0 {
+						m.cursorIndex--
+					}
+				case "enter":
+					m.unitInfo = InitUnitInfo(m.watcher.Units[m.cursorIndex].Properties, m.width, m.height)
+					cmd := func() tea.Msg { return g.SwitchScreenMsg(g.UnitInfoScreen) }
+					cmds = append(cmds, cmd)
+				case "/":
+					m.textinputSelected = true
+					m.textinput.Focus()
+				case "ctrl+c":
+					return m, tea.Quit
+				case "q":
+					cmd := func() tea.Msg { return g.SwitchScreenMsg(g.TopLevel) }
+					cmds = append(cmds, cmd)
+				}
 			}
 		}
 	case g.UnitInfoScreen:
@@ -143,12 +173,14 @@ func (m Model) View() string {
 				alignRight(len("NOT READY"), readyStatus),
 			)
 
-			if i == m.cursorIndex {
+			if i == m.cursorIndex && !m.textinputSelected {
 				fmt.Fprintf(&b, "-> ")
 			}
 
 			fmt.Fprintf(&b, "%s%s %s\n", left, alignRight(80-len(left), right), u.Description)
 		}
+
+		fmt.Fprintf(&b, "\n%s", m.textinput.View())
 
 		return b.String()
 	case g.UnitInfoScreen:
