@@ -33,8 +33,14 @@ type Model struct {
 	textinput         textinput.Model
 	textinputSelected bool
 	allReady          bool
-	width             int
-	height            int
+	/*
+		The two fields below are used when adding new units
+		while the program is running.
+	*/
+	addUnitBeforeUpdate bool
+	newUnitName         string
+	width               int
+	height              int
 }
 
 func New(dConn *dbus.Conn) Model {
@@ -55,6 +61,9 @@ func New(dConn *dbus.Conn) Model {
 
 func (m Model) UpdateCmd() tea.Cmd {
 	return func() tea.Msg {
+		if m.addUnitBeforeUpdate {
+			m.watcher.AddUnit(m.newUnitName)
+		}
 		allReady := m.watcher.UpdateAll()
 		time.Sleep(systemdInterval * time.Millisecond)
 		return g.SystemdUpdateMsg(allReady)
@@ -80,19 +89,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.textinputSelected = false
 					m.textinput.Blur()
 					m.textinput.SetValue("")
-					m.textinput.SetCursorMode(textinput.CursorHide)
 				case "enter":
 					m.textinputSelected = false
 					m.textinput.Blur()
-					m.watcher.AddUnit(m.textinput.Value())
+					m.newUnitName = m.textinput.Value()
+					m.addUnitBeforeUpdate = true
 					m.textinput.SetValue("")
-					m.textinput.SetCursorMode(textinput.CursorHide)
-					cmds = append(cmds, m.UpdateCmd())
-					return m, tea.Batch(cmds...)
-				}
-				if m.textinputSelected {
-					m.textinput, cmd = m.textinput.Update(msg)
-					cmds = append(cmds, cmd)
 				}
 			} else {
 				switch msg.String() {
@@ -111,6 +113,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				case "/":
 					m.textinputSelected = true
 					m.textinput.Focus()
+					m.textinput.SetCursorMode(textinput.CursorBlink)
+					return m, tea.Batch(cmds...)
 				case "ctrl+c":
 					return m, tea.Quit
 				case "q":
@@ -127,6 +131,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case g.SystemdUpdateMsg:
 		cmds = append(cmds, m.UpdateCmd())
+		m.addUnitBeforeUpdate = false
 		//log.Printf("From systemd, SystemddUpdateMsg")
 		m.allReady = bool(msg)
 		return m, tea.Batch(cmds...)
@@ -136,6 +141,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	}
+
+	m.textinput, cmd = m.textinput.Update(msg)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
