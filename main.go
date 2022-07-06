@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"spirit-box/logging"
 	"spirit-box/services"
-	"time"
+	"spirit-box/tui"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
 	"golang.org/x/net/websocket"
 )
 
 const PORT = "8080"
 const CHANNEL_BUFFER = 100
+const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
 
-var webOnly = true
+var webOnly = false
 
 func SocketTest(messages chan interface{}) func(*websocket.Conn) {
 	return func(ws *websocket.Conn) {
@@ -33,8 +36,10 @@ func main() {
 	}
 	defer dConn.Close()
 
+	// create a new watcher, add channels that will receive updates, start it up with an update interval
+	uw := services.NewWatcher(dConn)
+
 	if webOnly {
-		uw := services.NewWatcher(dConn)
 		messages := make(chan interface{}, CHANNEL_BUFFER)
 		uw.AttachChannel(messages)
 
@@ -46,23 +51,8 @@ func main() {
 
 		log.Printf("Server started on port %s.", PORT)
 
-		go func() {
-			time.Sleep(time.Second)
-			uw.InitializeStates()
-			for {
-				time.Sleep(time.Second)
-				uw.UpdateAll()
-			}
-		}()
+		go uw.Start(SYSTEMD_UPDATE_INTERVAL)
 
-		/*
-			go func() {
-				for {
-					time.Sleep(time.Second)
-					messages <- []byte("is this thing on?")
-				}
-			}()
-		*/
 		err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), nil)
 		if err != nil {
 			log.Fatal("ListenAndServe:" + err.Error())
@@ -70,37 +60,31 @@ func main() {
 	} else {
 		fmt.Printf("\033[2J") // clear the screen
 
-		/*
-			// Writes default log messages (log.Print, log.Fatal, etc...)
-			// to a file called tuiDebug.
-			f, err := tea.LogToFile("tuiDebug", "debug")
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer f.Close()
-			log.Print("Starting spirit-box...")
+		// Writes default log messages (log.Print, log.Fatal, etc...)
+		// to a file called tuiDebug.
+		f, err := tea.LogToFile("tuiDebug", "debug")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		log.Print("Starting spirit-box...")
 
-			logging.InitLogger()
+		logging.InitLogger()
+		uw.InitializeStates()
+		// the tui logic will "pump" the updates of the unit watcher.
+		// no need to run uw.Start
+		tui.StartTUI(dConn, uw)
 
-			dConn, err := dbus.New()
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer dConn.Close()
+		// Dump log lines to stdout for dev purposes.
+		fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())
+		for _, event := range logging.Logs.Events {
+			fmt.Println(event.LogLine())
+		}
 
-			tui.StartTUI(dConn)
+		logFile := logging.CreateLogFile()
+		defer logFile.Close()
 
-			// Dump log lines to stdout for dev purposes.
-			fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())
-			for _, event := range logging.Logs.Events {
-				fmt.Println(event.LogLine())
-			}
-
-			logFile := logging.CreateLogFile()
-			defer logFile.Close()
-
-			logging.Logs.WriteJSON(logFile)
-			fmt.Printf("\nWrote JSON log entries to %s.\n", logFile.Name())
-		*/
+		logging.Logs.WriteJSON(logFile)
+		fmt.Printf("\nWrote JSON log entries to %s.\n", logFile.Name())
 	}
 }

@@ -43,8 +43,7 @@ type Model struct {
 	height              int
 }
 
-func New(dConn *dbus.Conn) Model {
-	watcher, allReady := services.NewWatcher(dConn)
+func New(dConn *dbus.Conn, watcher *services.UnitWatcher) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Line
 	t := textinput.New()
@@ -55,7 +54,7 @@ func New(dConn *dbus.Conn) Model {
 		cursorIndex: 0,
 		spinner:     s,
 		textinput:   t,
-		allReady:    allReady,
+		allReady:    false,
 	}
 }
 

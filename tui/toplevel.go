@@ -6,9 +6,10 @@ import (
 	"os"
 	"strings"
 
+	"spirit-box/services"
 	g "spirit-box/tui/globals"
-	"spirit-box/tui/systemd"
 	"spirit-box/tui/scripts"
+	"spirit-box/tui/systemd"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -47,7 +48,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				if m.cursorIndex == 0 {
 					return m, func() tea.Msg { return g.SwitchScreenMsg(g.Systemd) }
-				} else if m.cursorIndex == 1{
+				} else if m.cursorIndex == 1 {
 					return m, func() tea.Msg { return g.SwitchScreenMsg(g.Scripts) }
 				}
 			case "q":
@@ -110,18 +111,18 @@ func (m model) View() string {
 	return "Something went wrong!"
 }
 
-func initialModel(dConn *dbus.Conn) model {
+func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher) model {
 	return model{
 		options:     []string{"systemd", "scripts"},
 		cursorIndex: 0,
 		curScreen:   g.TopLevel,
-		systemd:     systemd.New(dConn),
+		systemd:     systemd.New(dConn, watcher),
 		scripts:     scripts.New(),
 	}
 }
 
-func StartTUI(dConn *dbus.Conn) {
-	model := initialModel(dConn)
+func StartTUI(dConn *dbus.Conn, watcher *services.UnitWatcher) {
+	model := initialModel(dConn, watcher)
 	if err := tea.NewProgram(model).Start(); err != nil {
 		fmt.Printf("There was an error: %v\n", err)
 		os.Exit(1)

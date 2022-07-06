@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"spirit-box/logging"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +23,15 @@ type UnitWatcher struct {
 	updateChannels []chan interface{}
 	started        time.Time
 	mu             sync.Mutex
+}
+
+func (uw *UnitWatcher) Start(interval int) {
+	time.Sleep(time.Second)
+	uw.InitializeStates()
+	for {
+		time.Sleep(time.Duration(interval) * time.Millisecond)
+		uw.UpdateAll()
+	}
 }
 
 func (uw *UnitWatcher) UpdateAll() bool {
@@ -171,14 +181,12 @@ func (u *UnitInfo) update(updates [3]string) bool {
 	}
 
 	if changed {
-		/* Move this logic to updateChannel paradigm
 		obj := u.GetStateChange(from1, from2, from3, from4)
 		le := logging.NewLogEvent(fmt.Sprintf("%s state change.", u.Name), obj)
 		le.EndTime = time.Now()
 		le.StartTime = u.At
 		u.At = le.EndTime
 		logging.Logs.AddLogEvent(le)
-		*/
 
 		for _, c := range u.uw.updateChannels {
 			c <- u.GetStateChange(from1, from2, from3, from4)
