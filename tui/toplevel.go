@@ -8,6 +8,7 @@ import (
 
 	g "spirit-box/tui/globals"
 	"spirit-box/tui/systemd"
+	"spirit-box/tui/scripts"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,6 +20,7 @@ type model struct {
 	cursorIndex int
 	curScreen   g.Screen
 	systemd     systemd.Model
+	scripts     scripts.Model
 }
 
 func (m model) Init() tea.Cmd {
@@ -34,17 +36,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
-			case "j":
+			case "j", "down":
 				if m.cursorIndex < len(m.options)-1 {
 					m.cursorIndex++
 				}
-			case "k":
+			case "k", "up":
 				if m.cursorIndex > 0 {
 					m.cursorIndex--
 				}
 			case "enter":
 				if m.cursorIndex == 0 {
 					return m, func() tea.Msg { return g.SwitchScreenMsg(g.Systemd) }
+				} else if m.cursorIndex == 1{
+					return m, func() tea.Msg { return g.SwitchScreenMsg(g.Scripts) }
 				}
 			case "q":
 				return m, tea.Quit
@@ -55,6 +59,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case g.Systemd:
 		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	case g.Scripts:
+		m.scripts, cmd = m.scripts.Update(msg)
 		cmds = append(cmds, cmd)
 	case g.UnitInfoScreen:
 		m.systemd, cmd = m.systemd.Update(msg)
@@ -95,6 +102,8 @@ func (m model) View() string {
 		return b.String()
 	case g.Systemd:
 		return m.systemd.View()
+	case g.Scripts:
+		return m.scripts.View()
 	case g.UnitInfoScreen:
 		return m.systemd.View()
 	}
@@ -107,6 +116,7 @@ func initialModel(dConn *dbus.Conn) model {
 		cursorIndex: 0,
 		curScreen:   g.TopLevel,
 		systemd:     systemd.New(dConn),
+		scripts:     scripts.New(),
 	}
 }
 

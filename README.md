@@ -1,5 +1,5 @@
 # spirit-box
 
-TUI will be fleshed out on this branch.
+The directory `webui` holds the React frontend for the program's webui.
 
-Intro tutorial for bubbletea: https://github.com/charmbracelet/bubbletea/tree/master/tutorials 
+The build files in that directory will be embedded into the final Go binary, which will serve those files.

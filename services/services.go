@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"spirit-box/logging"
 	"strings"
 	"sync"
 	"time"
@@ -18,10 +17,11 @@ import (
 const whitelistPath = "/usr/share/spirit-box/whitelist"
 
 type UnitWatcher struct {
-	Units   []*UnitInfo
-	DConn   *dbus.Conn
-	started time.Time
-	mu      sync.Mutex
+	Units          []*UnitInfo
+	DConn          *dbus.Conn
+	updateChannels []chan interface{}
+	started        time.Time
+	mu             sync.Mutex
 }
 
 func (uw *UnitWatcher) UpdateAll() bool {
@@ -101,7 +101,7 @@ func (uw *UnitWatcher) InitializeState(u *UnitInfo) {
 func (uw *UnitWatcher) AddUnit(name string) {
 	uw.mu.Lock()
 	defer uw.mu.Unlock()
-	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, time.Now()}
+	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, time.Now(), uw}
 	uw.InitializeState(newUnit)
 	uw.Units = append(uw.Units, newUnit)
 	// Change logic for initialization?
@@ -115,15 +115,21 @@ func (uw *UnitWatcher) NumUnits() int {
 	return len(uw.Units)
 }
 
-func NewWatcher(dConn *dbus.Conn) (*UnitWatcher, bool) {
-	units := LoadWhitelist(whitelistPath)
+func (uw *UnitWatcher) AttachChannel(c chan interface{}) {
+	uw.mu.Lock()
+	defer uw.mu.Unlock()
+	uw.updateChannels = append(uw.updateChannels, c)
+}
+
+func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 	newUW := &UnitWatcher{
-		DConn:   dConn,
-		Units:   units,
-		started: time.Now(),
+		DConn:          dConn,
+		updateChannels: make([]chan interface{}, 0, 5),
+		started:        time.Now(),
 	}
-	allReady := newUW.InitializeStates()
-	return newUW, allReady
+	newUW.Units = LoadWhitelist(whitelistPath, newUW)
+
+	return newUW
 }
 
 // Basic data for a unit's state.
@@ -138,6 +144,7 @@ type UnitInfo struct {
 	Description string
 	Properties  map[string]interface{}
 	At          time.Time
+	uw          *UnitWatcher
 }
 
 // Check if unit info needs to be updated, log if it was changed.
@@ -164,12 +171,18 @@ func (u *UnitInfo) update(updates [3]string) bool {
 	}
 
 	if changed {
+		/* Move this logic to updateChannel paradigm
 		obj := u.GetStateChange(from1, from2, from3, from4)
 		le := logging.NewLogEvent(fmt.Sprintf("%s state change.", u.Name), obj)
 		le.EndTime = time.Now()
 		le.StartTime = u.At
 		u.At = le.EndTime
 		logging.Logs.AddLogEvent(le)
+		*/
+
+		for _, c := range u.uw.updateChannels {
+			c <- u.GetStateChange(from1, from2, from3, from4)
+		}
 	}
 
 	return changed
@@ -205,7 +218,7 @@ func (u *UnitStateChange) GetObjType() string {
 	return "SystemD Unit state change."
 }
 
-func LoadWhitelist(filename string) []*UnitInfo {
+func LoadWhitelist(filename string, uw *UnitWatcher) []*UnitInfo {
 	units := make([]*UnitInfo, 0)
 	file, err := os.Open(filename)
 	if err != nil {
@@ -221,7 +234,7 @@ func LoadWhitelist(filename string) []*UnitInfo {
 			log.Fatal(errors.New("Line in whitelist did not match <unit name>:<substate> format."))
 		}
 
-		units = append(units, &UnitInfo{split[0], split[1], false, "", "", "", "", nil, time.Now()})
+		units = append(units, &UnitInfo{split[0], split[1], false, "", "", "", "", nil, time.Now(), uw})
 	}
 	return units
 }
