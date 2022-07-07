@@ -2,8 +2,17 @@
   text-align: center;
 }
 
+.title {
+	margin-left: 5%;
+}
+
 .unitRow {
 	cursor: pointer;
+}
+
+.tableHeaderRow th {
+	border-bottom: inset;
+	background-color: #CD5C5C;
 }
 
 tr:nth-child(even) {
@@ -12,4 +21,43 @@ tr:nth-child(even) {
 
 .unitRow:hover  {
 	background-color: #ddd;
+}
+
+.ready {
+	font-weight: bold;
+	color: #04AA6D;
+}
+
+.notReady {
+	font-weight: bold;
+	color: #ff3333;
+}
+
+.unitContainer {
+	display: flex;
+	flex-direction: column;
+	width: 80%;
+	margin: auto;
+}
+
+.unitContainer > * {
+	flex: 1;
+}
+
+.dashboard {
+	margin-top: 10%;
+}
+
+.dashboard table {
+	margin: auto;
+	border: inset;
+}
+
+.dashboard th {
+	text-align: left;
+}
+
+.quitButton {
+	margin-top: 5%;
+	margin-left: 5%;
 }

@@ -27,6 +27,12 @@ func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *h
 	}
 }
 
+func createQuitHandler(quit chan struct{}) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		quit <- struct{}{}
+	}
+}
+
 func main() {
 	dConn, err := dbus.New()
 	if err != nil {
@@ -39,23 +45,23 @@ func main() {
 	// create a new watcher, add channels that will receive updates, start it up with an update interval
 	uw := services.NewWatcher(dConn)
 
-	messages := make(chan interface{}, CHANNEL_BUFFER)
+	quit := make(chan struct{})
 	if web {
-		uw.AttachChannel(messages)
 		go uw.Start(SYSTEMD_UPDATE_INTERVAL)
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/systemd", createSystemdHandler(uw))
+		mux.HandleFunc("/quit", createQuitHandler(quit))
 
 		log.Printf("Starting server on port %s.", PORT)
 		handler := cors.Default().Handler(mux)
 
-		//go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), handler)
-		if err != nil {
-			log.Fatal("ListenAndServe:" + err.Error())
-		}
-		//}()
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), handler)
+			if err != nil {
+				log.Fatal("ListenAndServe:" + err.Error())
+			}
+		}()
 	} else {
 		fmt.Printf("\033[2J") // clear the screen
 
@@ -73,6 +79,8 @@ func main() {
 		// no need to run uw.Start
 		tui.StartTUI(dConn, uw)
 	}
+
+	<-quit
 
 	// Dump log lines to stdout for dev purposes.
 	fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())
