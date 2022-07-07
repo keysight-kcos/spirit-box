@@ -7,7 +7,6 @@ import (
 	"spirit-box/logging"
 	"spirit-box/services"
 	"spirit-box/tui"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
@@ -20,9 +19,14 @@ const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
 
 var web = true
 
-func SocketTest(messages chan interface{}) func(*websocket.Conn) {
+func SocketTest(messages chan interface{}, socketClose chan struct{}) func(*websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		log.Printf("Received socket connection.")
+		go func() {
+			var msg string
+			websocket.Message.Receive(ws, &msg)
+			socketClose <- struct{}{}
+		}()
 		for {
 			msg := <-messages
 			websocket.JSON.Send(ws, msg)
@@ -42,13 +46,14 @@ func main() {
 	// create a new watcher, add channels that will receive updates, start it up with an update interval
 	uw := services.NewWatcher(dConn)
 
+	socketClose := make(chan struct{})
+	messages := make(chan interface{}, CHANNEL_BUFFER)
 	if web {
-		messages := make(chan interface{}, CHANNEL_BUFFER)
 		uw.AttachChannel(messages)
 
 		http.HandleFunc("/socket",
 			func(w http.ResponseWriter, req *http.Request) {
-				s := websocket.Server{Handler: websocket.Handler(SocketTest(messages))}
+				s := websocket.Server{Handler: websocket.Handler(SocketTest(messages, socketClose))}
 				s.ServeHTTP(w, req)
 			})
 
@@ -62,8 +67,6 @@ func main() {
 				log.Fatal("ListenAndServe:" + err.Error())
 			}
 		}()
-
-		time.Sleep(300 * time.Second)
 	} else {
 		fmt.Printf("\033[2J") // clear the screen
 
@@ -81,6 +84,8 @@ func main() {
 		// no need to run uw.Start
 		tui.StartTUI(dConn, uw)
 	}
+
+	<-socketClose
 
 	// Dump log lines to stdout for dev purposes.
 	fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())

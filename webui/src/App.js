@@ -1,29 +1,47 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import './App.css';
 
 function App() {
 	const [units, setUnits] = useState([]);
 	const [unitInfo, setUnitInfo] = useState({}); // unit who's info is displayed when unitInfo page comes up
+	const [connected, setConnected] = useState(false);
+	const [socket, setSocket] = useState({});
 
-	useEffect(() => {
+	const connect = useCallback(() => {
 		let ws = new WebSocket(`ws://${window.location.hostname}:8080/socket`);
 
 		ws.onopen = (event) => {
-			alert("Connection to websocket established.");
+			setConnected(true);
+		};
+
+		ws.onclose = (event) => {
+			setConnected(false);
+			setTimeout(() => {
+				connect();
+			}, 1000);
 		};
 
 		ws.onmessage = (event) => {
 			setUnits(prevUnits => [...prevUnits, JSON.parse(event.data)]);
-		};
+		}
 
-		return () => ws.close();
+		return ws;
+
 	}, []);
+
+	useEffect(() => {
+		let ws = connect();
+		setSocket(ws);
+		return () => ws.close();
+	}, [connect]);
 
 	const makeHandle = (unit) => {
 		return (e) => {
 			setUnitInfo(unit.Properties);
 		};
 	};
+
+	const ConnStatus =  () => connected ? <div>Connected</div> : <div>Not connected</div>;
 
 	if (Object.keys(unitInfo).length !== 0) {
 		console.log(unitInfo);
@@ -46,6 +64,7 @@ function App() {
 	} else {
 		return (
 			<div>
+			<ConnStatus/>
 			<table>
 			<tr>
 				<th>Unit</th>
@@ -65,6 +84,9 @@ function App() {
 					</tr>
 				))}
 			</table>
+			<button onClick={() => socket.send("stop")}>
+				Stop spirit-box
+			</button>
 			</div>
 		);
 	}
