@@ -16,7 +16,8 @@ function App() {
 			.then(data => {
 				setUnits(data);
 				allReady(data);
-			});
+			})
+			.catch((err) => setUnits([]));
 		}, 1000);
 	}, [unitsEndpoint]);
 
@@ -62,6 +63,44 @@ function App() {
 			: "unit";
 	};
 
+	const UnitDashboard = () => {
+		if (units.length === 0) {
+			return <div className="noConnection">Could not connect to spirit-box.</div>;
+		} else {
+			return (
+				<div className="dashboard">
+				<div className="unitContainer">
+					<div>
+					{notReady === 0 
+						? "All units are ready." 
+						: `Waiting for ${notReady} ${unitsPlural()} to be ready...`}
+					</div>
+					<table>
+					<tr className="tableHeaderRow">
+						<th>Unit</th>
+						<th>LoadState</th>
+						<th>ActiveState</th>
+						<th>SubState</th>
+						<th>Ready Status</th>
+						<th>Observation Time</th>
+					</tr>
+						{units.map(unit => (
+							<tr className="unitRow" onClick={makeHandle(unit)}>
+								<td>{unit.Name}</td>
+								<td>{unit.LoadState}</td>
+								<td>{unit.ActiveState}</td>
+								<td>{unit.SubState}</td>
+								<ReadyStatus unit={unit}/>
+								<td>{unit.At}</td>
+							</tr>
+						))}
+					</table>
+				</div>
+				</div>
+			);
+		}
+	};
+
 	if (Object.keys(unitInfo).length !== 0) {
 		console.log(unitInfo);
 		return (
@@ -86,37 +125,9 @@ function App() {
 			<h1 className="title">
 				spirit-box
 			</h1>
-			<div className="dashboard">
-			<div className="unitContainer">
-				<div>
-				{notReady === 0 
-					? "All units are ready." 
-					: `Waiting for ${notReady} ${unitsPlural()} to be ready...`}
-				</div>
-				<table>
-				<tr className="tableHeaderRow">
-					<th>Unit</th>
-					<th>LoadState</th>
-					<th>ActiveState</th>
-					<th>SubState</th>
-					<th>Ready Status</th>
-					<th>Observation Time</th>
-				</tr>
-					{units.map(unit => (
-						<tr className="unitRow" onClick={makeHandle(unit)}>
-							<td>{unit.Name}</td>
-							<td>{unit.LoadState}</td>
-							<td>{unit.ActiveState}</td>
-							<td>{unit.SubState}</td>
-							<ReadyStatus unit={unit}/>
-							<td>{unit.At}</td>
-						</tr>
-					))}
-				</table>
-			</div>
-			</div>
+			<UnitDashboard />
 			<button className="quitButton" onClick={() => fetch(quitEndpoint)}>
-			Quit spirit-box
+			Shut down spirit-box
 			</button>
 			</>
 		);

@@ -6,6 +6,12 @@
 	margin-left: 5%;
 }
 
+.noConnection {
+	font-weight: bold;
+	color: #ff3333;
+	margin-left: 5%;
+}
+
 .unitRow {
 	cursor: pointer;
 }
