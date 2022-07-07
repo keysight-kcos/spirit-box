@@ -58,10 +58,7 @@ func (uw *UnitWatcher) UpdateAll() bool {
 			log.Fatal(errors.New("Type assertion failed: properties[\"SubState\"] is not a string."))
 		}
 
-		changed := u.update([3]string{s1, s2, s3})
-		if changed {
-			u.Properties = properties
-		}
+		u.update([3]string{s1, s2, s3}, properties)
 		allReady = allReady && u.Ready
 	}
 
@@ -103,9 +100,8 @@ func (uw *UnitWatcher) InitializeState(u *UnitInfo) {
 		log.Fatal(errors.New("Type assertion failed: properties[\"Description\"] is not a string."))
 	}
 	u.Description = s4
-	u.Properties = properties
 
-	u.update([3]string{s1, s2, s3})
+	u.update([3]string{s1, s2, s3}, properties)
 }
 
 func (uw *UnitWatcher) AddUnit(name string) {
@@ -158,7 +154,7 @@ type UnitInfo struct {
 }
 
 // Check if unit info needs to be updated, log if it was changed.
-func (u *UnitInfo) update(updates [3]string) bool {
+func (u *UnitInfo) update(updates [3]string, properties map[string]interface{}) bool {
 	from1, from2, from3, from4 := u.LoadState, u.ActiveState, u.SubState, u.Ready
 	changed := false
 	if updates[0] != u.LoadState {
@@ -188,8 +184,10 @@ func (u *UnitInfo) update(updates [3]string) bool {
 		u.At = le.EndTime
 		logging.Logs.AddLogEvent(le)
 
+		u.Properties = properties
+
 		for _, c := range u.uw.updateChannels {
-			c <- u.GetStateChange(from1, from2, from3, from4)
+			c <- *u
 		}
 	}
 

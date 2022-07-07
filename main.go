@@ -7,6 +7,7 @@ import (
 	"spirit-box/logging"
 	"spirit-box/services"
 	"spirit-box/tui"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
@@ -17,7 +18,7 @@ const PORT = "8080"
 const CHANNEL_BUFFER = 100
 const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
 
-var webOnly = false
+var web = true
 
 func SocketTest(messages chan interface{}) func(*websocket.Conn) {
 	return func(ws *websocket.Conn) {
@@ -36,10 +37,12 @@ func main() {
 	}
 	defer dConn.Close()
 
+	logging.InitLogger()
+
 	// create a new watcher, add channels that will receive updates, start it up with an update interval
 	uw := services.NewWatcher(dConn)
 
-	if webOnly {
+	if web {
 		messages := make(chan interface{}, CHANNEL_BUFFER)
 		uw.AttachChannel(messages)
 
@@ -53,10 +56,14 @@ func main() {
 
 		go uw.Start(SYSTEMD_UPDATE_INTERVAL)
 
-		err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), nil)
-		if err != nil {
-			log.Fatal("ListenAndServe:" + err.Error())
-		}
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), nil)
+			if err != nil {
+				log.Fatal("ListenAndServe:" + err.Error())
+			}
+		}()
+
+		time.Sleep(300 * time.Second)
 	} else {
 		fmt.Printf("\033[2J") // clear the screen
 
@@ -69,22 +76,21 @@ func main() {
 		defer f.Close()
 		log.Print("Starting spirit-box...")
 
-		logging.InitLogger()
 		uw.InitializeStates()
 		// the tui logic will "pump" the updates of the unit watcher.
 		// no need to run uw.Start
 		tui.StartTUI(dConn, uw)
-
-		// Dump log lines to stdout for dev purposes.
-		fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())
-		for _, event := range logging.Logs.Events {
-			fmt.Println(event.LogLine())
-		}
-
-		logFile := logging.CreateLogFile()
-		defer logFile.Close()
-
-		logging.Logs.WriteJSON(logFile)
-		fmt.Printf("\nWrote JSON log entries to %s.\n", logFile.Name())
 	}
+
+	// Dump log lines to stdout for dev purposes.
+	fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())
+	for _, event := range logging.Logs.Events {
+		fmt.Println(event.LogLine())
+	}
+
+	logFile := logging.CreateLogFile()
+	defer logFile.Close()
+
+	logging.Logs.WriteJSON(logFile)
+	fmt.Printf("\nWrote JSON log entries to %s.\n", logFile.Name())
 }
