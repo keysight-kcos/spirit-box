@@ -13,6 +13,13 @@ import(
 	"sort"
 )
 
+type ScriptReturn struct{
+	Output string
+	NumRetries int
+	RetryTimeout int
+	Successful int
+}
+
 type ScriptData struct{
 	Path string
 	Shell string
@@ -31,7 +38,7 @@ func (d ByPriority) Swap(i, j int) {d[i], d[j] = d[j], d[i]}
 
 func RunAllScripts() {
 	l := logging.Logger
-	runScriptsInDir()
+	//runScriptsInDir()
 	scriptList, _ := loadScriptJson(l)
 	scriptList = sanitizeScriptList(scriptList)
 	lists := organizeLists(scriptList)
@@ -105,13 +112,19 @@ func runScriptList(l *log.Logger, scriptList [][]ScriptData) {
 inputs: *log.Logger - log
 	[][]ScriptData - list of lists of scripts to run*/
 	outputChannel := make(chan ScriptData)
+	var scriptReturn ScriptReturn
 	for i:= 0; i<len(scriptList); i++{
 		fmt.Printf("Running scripts of priority %d\n", scriptList[i][0].Priority)
 		for j:= 0; j<len(scriptList[i]); j++{
 			go executeAndChan(l, scriptList[i][j], outputChannel)
 		}
 		for j := 0; j<len(scriptList[i]); j++{
-			fmt.Print((<-outputChannel).Output)
+			err := json.Unmarshal([]byte((<-outputChannel).Output), &scriptReturn)
+			if err != nil {
+				fmt.Println(err)
+				l.Printf("Error in scripts json: %s", err)
+			}
+			fmt.Println(scriptReturn.Output)
 		}
 	}
 }
