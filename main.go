@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"spirit-box/logging"
 	"spirit-box/services"
 	"spirit-box/tui"
@@ -17,8 +18,6 @@ import (
 const PORT = "8080"
 const CHANNEL_BUFFER = 100
 const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
-
-var web = true
 
 func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -41,46 +40,61 @@ func main() {
 	defer dConn.Close()
 
 	logging.InitLogger()
-
-	// create a new watcher, add channels that will receive updates, start it up with an update interval
 	uw := services.NewWatcher(dConn)
 
-	quit := make(chan struct{})
-	if web {
-		go uw.Start(SYSTEMD_UPDATE_INTERVAL)
+	quitWeb := make(chan struct{})
+	quitTui := make(chan struct{})
 
-		mux := http.NewServeMux()
-		mux.HandleFunc("/systemd", createSystemdHandler(uw))
-		mux.HandleFunc("/quit", createQuitHandler(quit))
+	// setup endpoints for server
+	mux := http.NewServeMux()
+	mux.HandleFunc("/systemd", createSystemdHandler(uw))
+	mux.HandleFunc("/quit", createQuitHandler(quitWeb))
 
-		log.Printf("Starting server on port %s.", PORT)
-		handler := cors.Default().Handler(mux)
+	log.Printf("Starting server on port %s.", PORT)
+	handler := cors.Default().Handler(mux)
 
-		go func() {
-			err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), handler)
-			if err != nil {
-				log.Fatal("ListenAndServe:" + err.Error())
-			}
-		}()
-	} else {
-		fmt.Printf("\033[2J") // clear the screen
-
-		// Writes default log messages (log.Print, log.Fatal, etc...)
-		// to a file called tuiDebug.
-		f, err := tea.LogToFile("tuiDebug", "debug")
+	go func() { // start server
+		err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), handler)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("ListenAndServe:" + err.Error())
 		}
-		defer f.Close()
-		log.Print("Starting spirit-box...")
+	}()
 
-		uw.InitializeStates()
+	fmt.Printf("\033[2J") // clear the screen
+
+	// Writes default log messages (log.Print, log.Fatal, etc...)
+	// to a file called tuiDebug.
+	f, err := tea.LogToFile("tuiDebug", "debug")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	log.Print("Starting spirit-box...")
+	uw.InitializeStates()
+
+	var p *tea.Program
+	go func(quit chan struct{}) {
 		// the tui logic will "pump" the updates of the unit watcher.
 		// no need to run uw.Start
-		tui.StartTUI(dConn, uw)
+		p = tui.CreateProgram(dConn, uw)
+		if err := p.Start(); err != nil {
+			fmt.Printf("There was an error: %v\n", err)
+			os.Exit(1)
+		}
+		log.Print("Program exited.")
+		quit <- struct{}{}
+		log.Print("quit signal sent to channel.")
+	}(quitTui)
+
+	select {
+	case <-quitWeb:
+		p.Quit()
+	case <-quitTui:
+		break
 	}
 
-	<-quit
+	log.Print("Cleanup.")
 
 	// Dump log lines to stdout for dev purposes.
 	fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())

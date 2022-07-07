@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"spirit-box/services"
@@ -121,10 +120,8 @@ func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher) model {
 	}
 }
 
-func StartTUI(dConn *dbus.Conn, watcher *services.UnitWatcher) {
+func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher) *tea.Program {
 	model := initialModel(dConn, watcher)
-	if err := tea.NewProgram(model).Start(); err != nil {
-		fmt.Printf("There was an error: %v\n", err)
-		os.Exit(1)
-	}
+	p := tea.NewProgram(model)
+	return p
 }
