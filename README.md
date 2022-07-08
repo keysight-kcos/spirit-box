@@ -1,16 +1,14 @@
-# data-driven-boot-up-ui
-Data-driven Web/Terminal UI for a Linux System Boot-Up
+# spirit-box
 
+## 07/07
+Merging a bunch of stuff into main after.
 
-### Links
-Terminal cursor movement & overwriting lines: https://unix.stackexchange.com/questions/43075/how-to-change-the-contents-of-a-line-on-the-terminal-as-opposed-to-writing-a-new
+- Terminal interface.
+- React frontend for a web interface.
+- Improved logging.
+- Scripts functionality will be added soon.
 
-Useful video on .deb packaging: https://www.youtube.com/watch?v=ep88vVfzDAo
-
-### TODO
-- [ ] Networking/HW information
-- [ ] Interactive TUI
-
+___
 ## 06/27
 We are now looking into using charm's bubbletea package for implementing TUI functionality.
 - [x] Basic networking information (IPs for each NIC)

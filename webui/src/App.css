@@ -1,0 +1,69 @@
+.App {
+  text-align: center;
+}
+
+.title {
+	margin-left: 5%;
+}
+
+.noConnection {
+	font-weight: bold;
+	color: #ff3333;
+	margin-left: 5%;
+}
+
+.unitRow {
+	cursor: pointer;
+}
+
+.tableHeaderRow th {
+	border-bottom: inset;
+	background-color: #CD5C5C;
+}
+
+tr:nth-child(even) {
+	background-color: #f2f2f2;
+}
+
+.unitRow:hover  {
+	background-color: #ddd;
+}
+
+.ready {
+	font-weight: bold;
+	color: #04AA6D;
+}
+
+.notReady {
+	font-weight: bold;
+	color: #ff3333;
+}
+
+.unitContainer {
+	display: flex;
+	flex-direction: column;
+	width: 80%;
+	margin: auto;
+}
+
+.unitContainer > * {
+	flex: 1;
+}
+
+.dashboard {
+	margin-top: 10%;
+}
+
+.dashboard table {
+	margin: auto;
+	border: inset;
+}
+
+.dashboard th {
+	text-align: left;
+}
+
+.quitButton {
+	margin-top: 5%;
+	margin-left: 5%;
+}
