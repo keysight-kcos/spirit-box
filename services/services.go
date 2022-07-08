@@ -170,7 +170,7 @@ func (u *UnitInfo) update(updates [3]string, properties map[string]interface{}) 
 		changed = true
 	}
 
-	if u.SubStateDesired == "any" || u.SubState == u.SubStateDesired {
+	if u.SubStateDesired == "watch" || u.SubState == u.SubStateDesired {
 		u.Ready = true
 	} else {
 		u.Ready = false

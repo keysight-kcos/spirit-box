@@ -94,6 +94,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.newUnitName = m.textinput.Value()
 					m.addUnitBeforeUpdate = true
 					m.textinput.SetValue("")
+					return m, tea.Batch(cmds...)
 				}
 			} else {
 				switch msg.String() {
