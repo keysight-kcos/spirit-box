@@ -1,232 +1,211 @@
 package scripts
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"sort"
-	"spirit-box/logging"
+	"sync"
+	"time"
 )
 
-type ScriptReturn struct {
-	Output       string
-	NumRetries   int
-	RetryTimeout int
-	Successful   int
+const SCRIPT_SPEC_PATH = "/usr/share/spirit-box/script_specs.json"
+
+// Loaded from a json file.
+// Specifications for how to run a script.
+type ScriptSpec struct {
+	Cmd           string   `json:"cmd"`
+	Args          []string `json:"args"`
+	Priority      int      `json:"priority"`
+	RetryTimeout  int      `json:"retryTimeout"`  // time in ms between retrying a failed script
+	TotalWaitTime int      `json:"totalWaitTime"` // the maximum amount of time in ms to wait for a success
 }
 
-type ScriptData struct {
-	Path      string
-	Shell     string
-	Priority  int
-	Output    string
-	Pid       int
-	StartTime int
-	EndTime   int
-	Exitcode  int
-}
-
-type ByPriority []ScriptData
-
-func (d ByPriority) Len() int           { return len(d) }
-func (d ByPriority) Less(i, j int) bool { return d[i].Priority < d[j].Priority }
-func (d ByPriority) Swap(i, j int)      { d[i], d[j] = d[j], d[i] }
-
-func RunAllScripts() {
-	l := logging.Logger
-	//runScriptsInDir()
-	scriptList, _ := loadScriptJson(l)
-	scriptList = sanitizeScriptList(scriptList)
-	lists := organizeLists(scriptList)
-	//scriptList, _ := loadScriptList()
-	runScriptList(l, lists)
-}
-
-func checkShebang(line string) (bool, string) {
-	/*checks if the first 2 characters of a file are shebang
-	  inputs: string - the file path
-	  outputs: bool - true if shebang exists
-	           string - the path of the shell to use*/
-	file, err := os.Open(line)
+func (s *ScriptSpec) Run() ScriptResult {
+	bytes, err := exec.Command(s.Cmd, s.Args...).Output()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-	shebang := scanner.Text()
-	if len(shebang) < 2 || shebang[:2] != "#!" {
-		return false, ""
-	}
-	shell := shebang[2:]
-	return true, shell
-}
 
-func executeAndChan(l *log.Logger, scriptData ScriptData, co chan<- ScriptData) {
-	/*executes a script
-	  inputs: *log.Logger - logger
-	          ScriptData - data including path to script and shell
-	  	chan<-ScriptData - channel to collect goroutine output ScriptData*/
-	fmt.Println("Running script " + scriptData.Path + "...")
-	out, err := exec.Command(scriptData.Shell, scriptData.Path).Output()
+	res := ScriptResult{}
+	err = json.Unmarshal(bytes, &res)
 	if err != nil {
 		log.Fatal(err)
 	}
-	scriptData.Output = string(out)
-	co <- scriptData
-	l.Printf("Ran %s", scriptData.Path)
+
+	return res
 }
 
-func runScriptsInDir() {
-	/*runs the scripts in hard coded directory*/
-	l := logging.Logger
-	outputChannel := make(chan ScriptData)
-	scriptData := ScriptData{}
-	scriptCount := 0
-	scriptDir := "/usr/share/spirit-box/"
-	items, _ := ioutil.ReadDir(scriptDir)
-	fmt.Println("scripting...")
-	for _, item := range items {
-		if !item.IsDir() {
-			isScript, shell := checkShebang(scriptDir + item.Name())
-			if isScript {
-				scriptData.Shell = shell
-				scriptData.Path = scriptDir + item.Name()
-				scriptCount++
-				go executeAndChan(l, scriptData, outputChannel)
+type ScriptResult struct {
+	Success bool   `json:"success"`
+	Info    string `json:"info"` // More detailed information the script may want to return.
+}
+
+type ScriptTracker struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Runs      []*ScriptResult // can add individual stats about each run later
+	Finished  bool
+}
+
+func (st *ScriptTracker) ToString() string {
+	var runs string
+	for _, res := range st.Runs {
+		runs += fmt.Sprintf("%v\n", *res)
+	}
+	return fmt.Sprintf(
+		"Start: %s\nEnd: %s\nRuns:\n%s",
+		st.StartTime,
+		st.EndTime,
+		runs,
+	)
+}
+
+type PriorityGroup struct {
+	Num      int
+	Specs    []*ScriptSpec
+	Trackers []*ScriptTracker
+}
+
+func (pg *PriorityGroup) RunAll() {
+	// Init trackers
+	now := time.Now()
+	pg.Trackers = make([]*ScriptTracker, len(pg.Specs))
+	for i, _ := range pg.Specs {
+		pg.Trackers[i] = &ScriptTracker{
+			StartTime: now,
+			Runs:      make([]*ScriptResult, 0, 1000),
+		}
+	}
+
+	var wg sync.WaitGroup
+	for i, s := range pg.Specs {
+		wg.Add(1)
+		go func(index int, spec *ScriptSpec) {
+			timer := time.NewTimer(time.Duration(spec.TotalWaitTime) * time.Millisecond)
+			resChan := make(chan ScriptResult)
+		RLoop:
+			for {
+				go func() {
+					resChan <- spec.Run()
+				}()
+				select {
+				case res := <-resChan:
+					pg.Trackers[index].Runs = append(pg.Trackers[index].Runs, &res)
+					if res.Success {
+						break RLoop
+					}
+				case <-timer.C: // process took too long
+					break RLoop
+				}
+				time.Sleep(time.Duration(spec.RetryTimeout) * time.Millisecond)
 			}
-		}
+			pg.Trackers[index].EndTime = time.Now()
+			pg.Trackers[index].Finished = true
+			wg.Done()
+		}(i, s)
 	}
-	for i := 0; i < scriptCount; i++ {
-		fmt.Print((<-outputChannel).Output)
-	}
-	fmt.Println()
+	wg.Wait()
 }
 
-func runScriptList(l *log.Logger, scriptList [][]ScriptData) {
-	/*runs scripts in array
-	  inputs: *log.Logger - log
-	  	[][]ScriptData - list of lists of scripts to run*/
-	outputChannel := make(chan ScriptData)
-	var scriptReturn ScriptReturn
-	for i := 0; i < len(scriptList); i++ {
-		fmt.Printf("Running scripts of priority %d\n", scriptList[i][0].Priority)
-		for j := 0; j < len(scriptList[i]); j++ {
-			go executeAndChan(l, scriptList[i][j], outputChannel)
+func (pg *PriorityGroup) PrintAfterRun() { // Print the results of a run. For debugging.
+	fmt.Printf("Priority group %d:\n", pg.Num)
+	for i, s := range pg.Specs {
+		fmt.Printf("%s %v:\n%s\n", s.Cmd, s.Args, pg.Trackers[i].ToString())
+	}
+}
+
+type ScriptController struct {
+	PriorityGroups []*PriorityGroup
+}
+
+func (sc *ScriptController) RunPriorityGroups() {
+	for _, pg := range sc.PriorityGroups {
+		//fmt.Printf("Running scripts in priority group %d:\n", pg.num)
+		pg.RunAll()
+		//pg.PrintAfterRun()
+	}
+}
+
+func (sc *ScriptController) PrintPriorityGroups() { // for debugging
+	// output should be ordered by priority group
+	for _, pg := range sc.PriorityGroups {
+		fmt.Printf("PriorityGroup %d:\n", pg.Num)
+		for _, s := range pg.Specs {
+			fmt.Println(*s)
 		}
-		for j := 0; j < len(scriptList[i]); j++ {
-			err := json.Unmarshal([]byte((<-outputChannel).Output), &scriptReturn)
-			if err != nil {
-				fmt.Println(err)
-				l.Printf("Error in scripts json: %s", err)
+	}
+}
+
+func NewController() *ScriptController {
+	priorities := make(map[int]PriorityGroup)
+	specs := LoadScriptSpecs()
+	maxPriority := 0 // Assuming negative priorities are not a thing.
+	numPGroups := 0
+
+	for _, temp := range specs {
+		s := temp
+		if _, ok := priorities[s.Priority]; !ok {
+
+			pg := PriorityGroup{Num: s.Priority}
+			pg.Specs = make([]*ScriptSpec, 1)
+			pg.Specs[0] = &s
+			priorities[s.Priority] = pg
+			numPGroups++
+		} else {
+			newSpecs := append(
+				priorities[s.Priority].Specs,
+				&s,
+			)
+			pg := PriorityGroup{
+				Num:   s.Priority,
+				Specs: newSpecs,
 			}
-			fmt.Println(scriptReturn.Output)
+			priorities[s.Priority] = pg
+		}
+
+		if s.Priority > maxPriority {
+			maxPriority = s.Priority
 		}
 	}
-}
 
-func organizeLists(scriptList []ScriptData) [][]ScriptData {
-	/*organizes scriptData into list of lists by priority
-	  inputs: []ScriptData - list of ScriptData ordered by priority
-	  outputs: [][]ScriptData - list of lists of ScriptData*/
-	var lists [][]ScriptData
-	if len(scriptList) < 1 {
-		return lists
+	sc := &ScriptController{
+		PriorityGroups: make([]*PriorityGroup, numPGroups),
 	}
-	index := 0
-	currPrio := scriptList[0].Priority
-	lists = append(lists, []ScriptData{})
-	for i := 0; i < len(scriptList); i++ {
-		scriptData := scriptList[i]
-		if scriptData.Priority > currPrio {
-			index++
-			currPrio = scriptData.Priority
-			lists = append(lists, []ScriptData{})
-		}
-		lists[index] = append(lists[index], scriptData)
-	}
-	return lists
-}
 
-func sanitizeScriptList(scriptList []ScriptData) []ScriptData {
-	/*sanitizes scripts in list
-	  inputs: []ScriptData - list of scripts
-	  outputs: []ScriptData - sanitized list*/
-	var sanitized []ScriptData
-	for i := 0; i < len(scriptList); i++ {
-		scriptData := scriptList[i]
-		if _, err := os.Stat(scriptData.Path); errors.Is(err, os.ErrNotExist) {
-			log.Fatal(errors.New("Script does not exist: " + scriptData.Path))
-		} else if isScript, shell := checkShebang(scriptData.Path); !isScript {
-			fmt.Printf("Not shebang: %s\n", scriptData.Path)
-		} else {
-			scriptData.Shell = shell
-			sanitized = append(sanitized, scriptData)
+	counter := 0
+	for i := 0; i < maxPriority+1; i++ { // inefficient, can optimize later
+		if pg, ok := priorities[i]; ok {
+			sc.PriorityGroups[counter] = &pg
+			counter++
 		}
 	}
-	sort.Sort(ByPriority(sanitized))
-	return sanitized
+
+	return sc
 }
 
-func loadScriptJson(l *log.Logger) ([]ScriptData, error) {
-	/*loads scriptData listed in scripts.json file
-	  outputs: []ScriptData - array of scripts
-	           error - errors*/
-	path := "/usr/share/spirit-box/scripts.json"
-	fmt.Printf("Loading scripts based on path names in %s\n", path)
-	var scriptList []ScriptData
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		fmt.Println("No script json.")
-		return scriptList, err
+func LoadScriptSpecs() []ScriptSpec {
+	type ParseObj struct {
+		SpecArr []ScriptSpec `json:"scriptSpecs"`
 	}
-	content, err := ioutil.ReadFile(path)
+
+	temp := ParseObj{}
+	specs := make([]ScriptSpec, 0)
+	if _, err := os.Stat(SCRIPT_SPEC_PATH); errors.Is(err, os.ErrNotExist) {
+		return specs
+	}
+
+	bytes, err := os.ReadFile(SCRIPT_SPEC_PATH)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = json.Unmarshal(content, &scriptList)
-	if err != nil {
-		fmt.Println(err)
-		l.Printf("Error in scripts json: %s", err)
-	}
-	return scriptList, err
-}
 
-func loadScriptList() ([]ScriptData, error) {
-	/*executes scripts listed as paths in script file
-	  outputs: []ScriptData - array of scripts
-	           error - errors*/
-	var scriptList []ScriptData
-	path := "/usr/share/spirit-box/scripts"
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		fmt.Println("No script file.")
-		return scriptList, err
-	}
-
-	fmt.Printf("Running scripts based on path names in %s\n", path)
-	file, err := os.Open(path)
+	err = json.Unmarshal(bytes, &temp)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	scriptData := ScriptData{}
-	for scanner.Scan() {
-		line := scanner.Text()
-		if _, err := os.Stat(line); errors.Is(err, os.ErrNotExist) {
-			log.Fatal(errors.New("Script does not exist: " + line))
-		} else if isScript, shell := checkShebang(line); !isScript {
-			fmt.Printf("Not shebang: %s\n", line)
-		} else {
-			scriptData.Path = line
-			scriptData.Shell = shell
-			scriptList = append(scriptList, scriptData)
-		}
-	}
-	return scriptList, scanner.Err()
+	return temp.SpecArr
 }

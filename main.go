@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"spirit-box/logging"
+	"spirit-box/scripts"
 	"spirit-box/services"
 	"spirit-box/tui"
 
@@ -26,6 +27,15 @@ func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *h
 	}
 }
 
+func createScriptsHandler(sc *scripts.ScriptController) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Print("Received req at scripts endpoint.")
+		log.Printf("%v", *sc)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(sc)
+	}
+}
+
 func createQuitHandler(quit chan struct{}) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		quit <- struct{}{}
@@ -41,6 +51,7 @@ func main() {
 
 	logging.InitLogger()
 	uw := services.NewWatcher(dConn)
+	sc := scripts.NewController()
 
 	quitWeb := make(chan struct{})
 	quitTui := make(chan struct{})
@@ -48,6 +59,7 @@ func main() {
 	// setup endpoints for server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/systemd", createSystemdHandler(uw))
+	mux.HandleFunc("/scripts", createScriptsHandler(sc))
 	mux.HandleFunc("/quit", createQuitHandler(quitWeb))
 
 	log.Printf("Starting server on port %s.", PORT)
@@ -60,8 +72,6 @@ func main() {
 		}
 	}()
 
-	fmt.Printf("\033[2J") // clear the screen
-
 	// Writes default log messages (log.Print, log.Fatal, etc...)
 	// to a file called tuiDebug.
 	f, err := tea.LogToFile("tuiDebug", "debug")
@@ -70,8 +80,10 @@ func main() {
 	}
 	defer f.Close()
 
+	fmt.Printf("\033[2J") // clear the screen
 	log.Print("Starting spirit-box...")
 	uw.InitializeStates()
+	go sc.RunPriorityGroups()
 
 	var p *tea.Program
 	go func(quit chan struct{}) {
