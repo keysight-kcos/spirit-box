@@ -1,16 +1,32 @@
 import React, { useState, useEffect } from "react";
+import ScriptsDashboard from "./ScriptsDashboard.js";
 import './App.css';
 
 function App() {
 	const unitsEndpoint = `http://${window.location.hostname}:8080/systemd`;
+	const scriptsEndpoint = `http://${window.location.hostname}:8080/scripts`;
 	const quitEndpoint = `http://${window.location.hostname}:8080/quit`;
 	const [units, setUnits] = useState([]);
 	const [unitInfo, setUnitInfo] = useState({}); // unit who's info is displayed when unitInfo page comes up
 	const [notReady, setNotReady] = useState(0);
 
+	const [priorityGroups, setPriorityGroups] = useState([]);
+
 	useEffect(() => {
 		setInterval(
 		() => {
+			fetch(scriptsEndpoint)
+			.then(res => res.json())
+			.then(data => {
+				console.log(data);
+				setPriorityGroups(data);
+			})
+			.catch((err) => setPriorityGroups([]));
+		}, 5000);
+
+		setInterval(
+		() => {
+
 			fetch(unitsEndpoint)
 			.then(res => res.json())
 			.then(data => {
@@ -19,7 +35,7 @@ function App() {
 			})
 			.catch((err) => setUnits([]));
 		}, 1000);
-	}, [unitsEndpoint]);
+	}, [unitsEndpoint, scriptsEndpoint]);
 
 	const makeHandle = (unit) => {
 		return (e) => {
@@ -65,7 +81,7 @@ function App() {
 
 	const UnitDashboard = () => {
 		if (units.length === 0) {
-			return <div className="noConnection">Could not connect to spirit-box.</div>;
+			return <div className="noConnection">Could not retrieve systemd info from spirit-box.</div>;
 		} else {
 			return (
 				<div className="dashboard">
@@ -125,6 +141,7 @@ function App() {
 			<h1 className="title">
 				spirit-box
 			</h1>
+			<ScriptsDashboard priorityGroups={priorityGroups} />
 			<UnitDashboard />
 			<button className="quitButton" onClick={() => fetch(quitEndpoint)}>
 			Shut down spirit-box

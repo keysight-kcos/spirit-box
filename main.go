@@ -32,7 +32,7 @@ func createScriptsHandler(sc *scripts.ScriptController) func(http.ResponseWriter
 		log.Print("Received req at scripts endpoint.")
 		log.Printf("%v", *sc)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(sc)
+		json.NewEncoder(w).Encode(sc.PriorityGroups)
 	}
 }
 

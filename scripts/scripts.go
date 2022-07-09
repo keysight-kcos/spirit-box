@@ -44,10 +44,10 @@ type ScriptResult struct {
 }
 
 type ScriptTracker struct {
-	StartTime time.Time
-	EndTime   time.Time
-	Runs      []*ScriptResult // can add individual stats about each run later
-	Finished  bool
+	StartTime time.Time       `json:"startTime"`
+	EndTime   time.Time       `json:"endTime"`
+	Runs      []*ScriptResult `json:"runs"` // can add individual stats about each run later
+	Finished  bool            `json:"finished"`
 }
 
 func (st *ScriptTracker) ToString() string {
@@ -64,9 +64,9 @@ func (st *ScriptTracker) ToString() string {
 }
 
 type PriorityGroup struct {
-	Num      int
-	Specs    []*ScriptSpec
-	Trackers []*ScriptTracker
+	Num      int              `json:"num"`
+	Specs    []*ScriptSpec    `json:"specs"`
+	Trackers []*ScriptTracker `json:"trackers"`
 }
 
 func (pg *PriorityGroup) RunAll() {
@@ -118,7 +118,7 @@ func (pg *PriorityGroup) PrintAfterRun() { // Print the results of a run. For de
 }
 
 type ScriptController struct {
-	PriorityGroups []*PriorityGroup
+	PriorityGroups []*PriorityGroup `json:"priorityGroups"`
 }
 
 func (sc *ScriptController) RunPriorityGroups() {
