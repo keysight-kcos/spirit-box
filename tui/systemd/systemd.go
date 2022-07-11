@@ -22,7 +22,7 @@ var notReadyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("9"))
 var alignRightStyle = lp.NewStyle().Align(lp.Right)
 var alignLeftStyle = lp.NewStyle().Align(lp.Left)
 
-const systemdInterval = 500 // time between updates in milliseconds
+const systemdInterval = 1000 // time between updates in milliseconds
 
 type Model struct {
 	watcher           *services.UnitWatcher
@@ -32,7 +32,7 @@ type Model struct {
 	spinner           spinner.Model
 	textinput         textinput.Model
 	textinputSelected bool
-	allReady          bool
+	AllReady          bool
 	/*
 		The two fields below are used when adding new units
 		while the program is running.
@@ -54,7 +54,7 @@ func New(dConn *dbus.Conn, watcher *services.UnitWatcher) Model {
 		cursorIndex: 0,
 		spinner:     s,
 		textinput:   t,
-		allReady:    false,
+		AllReady:    false,
 	}
 }
 
@@ -63,9 +63,9 @@ func (m Model) UpdateCmd() tea.Cmd {
 		if m.addUnitBeforeUpdate {
 			m.watcher.AddUnit(m.newUnitName)
 		}
-		allReady := m.watcher.UpdateAll()
+		AllReady := m.watcher.UpdateAll()
 		time.Sleep(systemdInterval * time.Millisecond)
-		return g.SystemdUpdateMsg(allReady)
+		return g.SystemdUpdateMsg(AllReady)
 	}
 }
 
@@ -133,7 +133,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		cmds = append(cmds, m.UpdateCmd())
 		m.addUnitBeforeUpdate = false
 		//log.Printf("From systemd, SystemddUpdateMsg")
-		m.allReady = bool(msg)
+		m.AllReady = bool(msg)
 		return m, tea.Batch(cmds...)
 	case g.SwitchScreenMsg:
 		m.curScreen = g.Screen(msg)
@@ -153,7 +153,7 @@ func (m Model) View() string {
 	switch m.curScreen {
 	case g.Systemd:
 		var info string
-		if m.allReady {
+		if m.AllReady {
 			info = readyStyle.Render("All units are ready.")
 		} else {
 			info = notReadyStyle.Render(m.spinner.View())

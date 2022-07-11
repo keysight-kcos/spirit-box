@@ -12,8 +12,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	lp "github.com/charmbracelet/lipgloss"
 	"github.com/coreos/go-systemd/v22/dbus"
 )
+
+var readyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("10"))
+var notReadyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("9"))
 
 type model struct {
 	options     []string
@@ -21,6 +25,7 @@ type model struct {
 	curScreen   g.Screen
 	systemd     systemd.Model
 	scripts     scripts.Model
+	ipStr       string
 }
 
 func (m model) Init() tea.Cmd {
@@ -92,7 +97,16 @@ func (m model) View() string {
 	switch m.curScreen {
 	case g.TopLevel:
 		var b strings.Builder
-		fmt.Fprintf(&b, "spirit-box\n\n")
+		var info string
+		fmt.Fprintf(&b, "spirit-box\n")
+		if m.systemd.AllReady {
+			info = readyStyle.Render("All systemd units are ready.")
+		} else {
+			info = notReadyStyle.Render("Waiting for systemd units to be ready.")
+		}
+		fmt.Fprintf(&b, info)
+
+		fmt.Fprintf(&b, fmt.Sprintf("\n\n%s\n\n", m.ipStr))
 		for i, option := range m.options {
 			if i == m.cursorIndex {
 				fmt.Fprintf(&b, "-> ")
@@ -110,18 +124,19 @@ func (m model) View() string {
 	return "Something went wrong!"
 }
 
-func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher) model {
+func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string) model {
 	return model{
 		options:     []string{"systemd", "scripts"},
 		cursorIndex: 0,
 		curScreen:   g.TopLevel,
 		systemd:     systemd.New(dConn, watcher),
 		scripts:     scripts.New(),
+		ipStr:       fmt.Sprintf("Serving web ui at http://%s:8080", ip),
 	}
 }
 
-func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher) *tea.Program {
-	model := initialModel(dConn, watcher)
+func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string) *tea.Program {
+	model := initialModel(dConn, watcher, ip)
 	p := tea.NewProgram(model)
 	return p
 }

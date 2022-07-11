@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"spirit-box/logging"
+	"strings"
 	"sync"
 	"time"
 )
@@ -38,6 +40,10 @@ func (s *ScriptSpec) Run() ScriptResult {
 	return res
 }
 
+func (s *ScriptSpec) ToString() string {
+	return fmt.Sprintf("%s %s", s.Cmd, strings.Join(s.Args, " "))
+}
+
 type ScriptResult struct {
 	Success bool   `json:"success"`
 	Info    string `json:"info"` // More detailed information the script may want to return.
@@ -61,6 +67,36 @@ func (st *ScriptTracker) ToString() string {
 		st.EndTime,
 		runs,
 	)
+}
+
+func (st *ScriptTracker) Succeeded() bool {
+	return len(st.Runs) > 0 && st.Runs[len(st.Runs)-1].Success
+}
+
+type ScriptLogObj struct { // for json logs
+	StartTime time.Time       `json:"-"`
+	EndTime   time.Time       `json:"-"`
+	Runs      []*ScriptResult `json:"runs"`
+	Spec      *ScriptSpec     `json:"scriptSpecification"`
+	Succeeded bool            `json:"succeeded"`
+}
+
+func NewScriptLogObj(spec *ScriptSpec, tracker *ScriptTracker) *ScriptLogObj {
+	return &ScriptLogObj{
+		StartTime: tracker.StartTime,
+		EndTime:   tracker.EndTime,
+		Runs:      tracker.Runs,
+		Spec:      spec,
+		Succeeded: tracker.Succeeded(),
+	}
+}
+
+func (sl *ScriptLogObj) LogLine() string {
+	return fmt.Sprintf("Executed '%s' %d times. Success: %t", sl.Spec.ToString(), len(sl.Runs), sl.Succeeded)
+}
+
+func (sl *ScriptLogObj) GetObjType() string {
+	return "Script event."
 }
 
 type PriorityGroup struct {
@@ -104,6 +140,13 @@ func (pg *PriorityGroup) RunAll() {
 			}
 			pg.Trackers[index].EndTime = time.Now()
 			pg.Trackers[index].Finished = true
+			go func(spec *ScriptSpec, tracker *ScriptTracker) {
+				scriptLog := NewScriptLogObj(spec, tracker)
+				le := logging.NewLogEvent(scriptLog.LogLine(), scriptLog)
+				le.StartTime = scriptLog.StartTime
+				le.EndTime = scriptLog.EndTime
+				logging.Logs.AddLogEvent(le)
+			}(s, pg.Trackers[index])
 			wg.Done()
 		}(i, s)
 	}

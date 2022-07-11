@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+const (
+	LOG_PATH = "/usr/share/spirit-box/logs/"
+)
+
+type LogEvents struct {
+	mu     sync.Mutex
+	Events []*LogEvent `json:"events"`
+}
+
+var Logs *LogEvents // global variable used for logging
+
 type LogObject interface {
 	LogLine() string
 	GetObjType() string
@@ -38,13 +49,6 @@ func (le *LogEvent) LogLine() string {
 	return fmt.Sprintf("%s: %s", FormatTimeNano(le.StartTime), le.Obj.LogLine())
 }
 
-type LogEvents struct {
-	mu     sync.Mutex
-	Events []*LogEvent `json:"events"`
-}
-
-var Logs *LogEvents
-
 func (l *LogEvents) Length() int {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -63,11 +67,6 @@ func (l *LogEvents) WriteJSON(f io.Writer) {
 	bytes, _ := json.MarshalIndent(l, "", "  ")
 	f.Write(bytes)
 }
-
-const (
-	LOG_PATH = "/usr/share/spirit-box/logs/"
-	// LOG_PATH = "/home/severian/data-driven-boot-up-ui/temp_logs/" // temporarily want to work with files in local dir
-)
 
 type MessageLog struct {
 	Message string `json:"message"`

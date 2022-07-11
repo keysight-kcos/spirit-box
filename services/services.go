@@ -113,6 +113,23 @@ func (uw *UnitWatcher) AddUnit(name string) {
 	// Change logic for initialization?
 }
 
+func (uw *UnitWatcher) AllReadyStatus() string {
+	uw.mu.Lock()
+	units := uw.Units
+	uw.mu.Unlock()
+	unitsReady := 0
+	for _, unit := range uw.Units {
+		if unit.Ready {
+			unitsReady++
+		}
+	}
+	if unitsReady == len(units) {
+		return "All systemd units are ready."
+	} else {
+		return fmt.Sprintf("Waiting for %d systemd units to be ready.", len(units)-unitsReady)
+	}
+}
+
 func (uw *UnitWatcher) Elapsed() time.Duration {
 	return time.Since(uw.started)
 }
@@ -178,12 +195,16 @@ func (u *UnitInfo) update(updates [3]string, properties map[string]interface{}) 
 
 	if changed {
 		obj := u.GetStateChange(from1, from2, from3, from4)
-		le := logging.NewLogEvent(fmt.Sprintf("%s state change.", u.Name), obj)
-		le.EndTime = time.Now()
-		le.StartTime = u.At
-		u.At = le.EndTime
-		logging.Logs.AddLogEvent(le)
+		now := time.Now()
 
+		go func(obj *UnitStateChange, now, at time.Time, unitName string) {
+			le := logging.NewLogEvent(fmt.Sprintf("%s state change.", unitName), obj)
+			le.EndTime = now
+			le.StartTime = at
+			logging.Logs.AddLogEvent(le)
+		}(obj, now, u.At, u.Name)
+
+		u.At = now
 		u.Properties = properties
 
 		for _, c := range u.uw.updateChannels {

@@ -33,7 +33,7 @@ function App() {
 		return <TrackerInfo tracker={trackerInfo} close={() => setTrackerInfoOpen(false)}/>;
 	} else {
 		return (
-			<div className="bg-blue-300 pl-4 pb-4 h-screen pr-5">
+			<div className="bg-blue-300 pl-4 pb-4 h-screen w-full table pr-5">
 			<h1 className="text-3xl font-extrabold mb-10">
 				spirit-box
 			</h1>

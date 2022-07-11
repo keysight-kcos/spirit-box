@@ -1,11 +1,14 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"spirit-box/device"
 	"spirit-box/logging"
 	"spirit-box/scripts"
 	"spirit-box/services"
@@ -19,6 +22,9 @@ import (
 const PORT = "8080"
 const CHANNEL_BUFFER = 100
 const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
+
+//go:embed frontend_build_files
+var embeddedFiles embed.FS
 
 func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +48,19 @@ func createQuitHandler(quit chan struct{}) func(http.ResponseWriter, *http.Reque
 	}
 }
 
+func getFileSystem() http.FileSystem {
+	fsys, err := fs.Sub(embeddedFiles, "frontend_build_files")
+	if err != nil {
+		panic(err)
+	}
+
+	return http.FS(fsys)
+}
+
 func main() {
+	ip := device.GetIPv4Addr("eth0")
+	ip = ip[:len(ip)-3]
+
 	dConn, err := dbus.New()
 	if err != nil {
 		log.Fatal(err)
@@ -58,6 +76,7 @@ func main() {
 
 	// setup endpoints for server
 	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(getFileSystem()))
 	mux.HandleFunc("/systemd", createSystemdHandler(uw))
 	mux.HandleFunc("/scripts", createScriptsHandler(sc))
 	mux.HandleFunc("/quit", createQuitHandler(quitWeb))
@@ -89,7 +108,7 @@ func main() {
 	go func(quit chan struct{}) {
 		// the tui logic will "pump" the updates of the unit watcher.
 		// no need to run uw.Start
-		p = tui.CreateProgram(dConn, uw)
+		p = tui.CreateProgram(dConn, uw, ip)
 		if err := p.Start(); err != nil {
 			fmt.Printf("There was an error: %v\n", err)
 			os.Exit(1)
