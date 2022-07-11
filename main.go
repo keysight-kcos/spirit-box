@@ -108,7 +108,7 @@ func main() {
 	go func(quit chan struct{}) {
 		// the tui logic will "pump" the updates of the unit watcher.
 		// no need to run uw.Start
-		p = tui.CreateProgram(dConn, uw, ip)
+		p = tui.CreateProgram(dConn, uw, ip, sc)
 		if err := p.Start(); err != nil {
 			fmt.Printf("There was an error: %v\n", err)
 			os.Exit(1)

@@ -6,8 +6,9 @@ import (
 	"strings"
 
 	"spirit-box/services"
+	"spirit-box/scripts"
 	g "spirit-box/tui/globals"
-	"spirit-box/tui/scripts"
+	"spirit-box/tui/scriptsTui"
 	"spirit-box/tui/systemd"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -24,7 +25,7 @@ type model struct {
 	cursorIndex int
 	curScreen   g.Screen
 	systemd     systemd.Model
-	scripts     scripts.Model
+	scripts     scriptsTui.Model
 	ipStr       string
 }
 
@@ -124,19 +125,19 @@ func (m model) View() string {
 	return "Something went wrong!"
 }
 
-func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string) model {
+func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc *scripts.ScriptController) model {
 	return model{
 		options:     []string{"systemd", "scripts"},
 		cursorIndex: 0,
 		curScreen:   g.TopLevel,
 		systemd:     systemd.New(dConn, watcher),
-		scripts:     scripts.New(),
+		scripts:     scriptsTui.New(sc),
 		ipStr:       fmt.Sprintf("Serving web ui at http://%s:8080", ip),
 	}
 }
 
-func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string) *tea.Program {
-	model := initialModel(dConn, watcher, ip)
+func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc *scripts.ScriptController) *tea.Program {
+	model := initialModel(dConn, watcher, ip, sc)
 	p := tea.NewProgram(model)
 	return p
 }
