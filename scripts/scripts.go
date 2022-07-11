@@ -148,7 +148,6 @@ func NewController() *ScriptController {
 	for _, temp := range specs {
 		s := temp
 		if _, ok := priorities[s.Priority]; !ok {
-
 			pg := PriorityGroup{Num: s.Priority}
 			pg.Specs = make([]*ScriptSpec, 1)
 			pg.Specs[0] = &s

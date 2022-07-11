@@ -1,152 +1,53 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ScriptsDashboard from "./ScriptsDashboard.js";
+import UnitDashboard from "./UnitDashboard.js";
+import UnitInfo from "./UnitInfo.js";
+import TrackerInfo from "./TrackerInfo.js";
 import './App.css';
 
 function App() {
-	const unitsEndpoint = `http://${window.location.hostname}:8080/systemd`;
-	const scriptsEndpoint = `http://${window.location.hostname}:8080/scripts`;
 	const quitEndpoint = `http://${window.location.hostname}:8080/quit`;
-	const [units, setUnits] = useState([]);
 	const [unitInfo, setUnitInfo] = useState({}); // unit who's info is displayed when unitInfo page comes up
-	const [notReady, setNotReady] = useState(0);
+	const [unitInfoOpen, setUnitInfoOpen] = useState(false);
 
-	const [priorityGroups, setPriorityGroups] = useState([]);
+	const [trackerInfo, setTrackerInfo] = useState({}); // info about script runs
+	const [trackerInfoOpen, setTrackerInfoOpen] = useState(false);
 
-	useEffect(() => {
-		setInterval(
-		() => {
-			fetch(scriptsEndpoint)
-			.then(res => res.json())
-			.then(data => {
-				console.log(data);
-				setPriorityGroups(data);
-			})
-			.catch((err) => setPriorityGroups([]));
-		}, 5000);
-
-		setInterval(
-		() => {
-
-			fetch(unitsEndpoint)
-			.then(res => res.json())
-			.then(data => {
-				setUnits(data);
-				allReady(data);
-			})
-			.catch((err) => setUnits([]));
-		}, 1000);
-	}, [unitsEndpoint, scriptsEndpoint]);
-
-	const makeHandle = (unit) => {
+	const handleUnitInfo = (unit) => {
 		return (e) => {
 			setUnitInfo(unit.Properties);
+			setUnitInfoOpen(true);
 		};
 	};
 
-	const ReadyStatus = ({ unit }) => {
-		//console.log("rendering", unit.Name);
-		let s = "NOT READY";
-		let style = "notReady";
-		if (unit.Ready) {
-			s = "READY";
-			style = "ready";
-		} 
-		if (unit.SubStateDesired === "watch") {
-			s = "WATCHING";
-		}
-
-		return (
-			<td className={style}>
-				{s}
-			</td>
-		);
+	const handleTrackerInfo = (tracker) => {
+		return (e) => {
+			setTrackerInfo(tracker);
+			setTrackerInfoOpen(true);
+		};
 	};
 
-	const allReady = (units) => {
-		let notReady = 0;
-		for (let i = 0; i < units.length; i++)  {
-			const unit = units[i];
-			if (!unit.Ready) {
-				notReady++;
-			}
-		}
-		setNotReady(notReady);
-	};
-
-	const unitsPlural = () => {
-		return notReady > 1 
-			? "units"
-			: "unit";
-	};
-
-	const UnitDashboard = () => {
-		if (units.length === 0) {
-			return <div className="noConnection">Could not retrieve systemd info from spirit-box.</div>;
-		} else {
-			return (
-				<div className="dashboard">
-				<div className="unitContainer">
-					<div>
-					{notReady === 0 
-						? "All units are ready." 
-						: `Waiting for ${notReady} ${unitsPlural()} to be ready...`}
-					</div>
-					<table>
-					<tr className="tableHeaderRow">
-						<th>Unit</th>
-						<th>LoadState</th>
-						<th>ActiveState</th>
-						<th>SubState</th>
-						<th>Ready Status</th>
-						<th>Observation Time</th>
-					</tr>
-						{units.map(unit => (
-							<tr className="unitRow" onClick={makeHandle(unit)}>
-								<td>{unit.Name}</td>
-								<td>{unit.LoadState}</td>
-								<td>{unit.ActiveState}</td>
-								<td>{unit.SubState}</td>
-								<ReadyStatus unit={unit}/>
-								<td>{unit.At}</td>
-							</tr>
-						))}
-					</table>
-				</div>
-				</div>
-			);
-		}
-	};
-
-	if (Object.keys(unitInfo).length !== 0) {
-		console.log(unitInfo);
-		return (
-			<div>
-			<button onClick={
-				(e) => {
-					setUnitInfo({});
-				}
-			}>Back</button>
-			<ul>
-				{
-					Object.entries(unitInfo).map(p => {
-						return <li>{`${p[0]}: ${p[1]}`}</li>;
-					})
-				}
-			</ul>
-			</div>
-		);
+	if (unitInfoOpen) {
+		return <UnitInfo unitInfo={unitInfo} close={() => setUnitInfoOpen(false)} />;
+	} else if (trackerInfoOpen) {
+		return <TrackerInfo tracker={trackerInfo} close={() => setTrackerInfoOpen(false)}/>;
 	} else {
 		return (
-			<>
-			<h1 className="title">
+			<div className="bg-blue-300 pl-4 pb-4 h-screen pr-5">
+			<h1 className="text-3xl font-extrabold mb-10">
 				spirit-box
 			</h1>
-			<ScriptsDashboard priorityGroups={priorityGroups} />
-			<UnitDashboard />
-			<button className="quitButton" onClick={() => fetch(quitEndpoint)}>
+
+			<ScriptsDashboard handleTrackerInfo={handleTrackerInfo}/>
+			<UnitDashboard handleUnitInfo={handleUnitInfo} />
+
+			<button className="font-bold bg-gray-300 mt-10 p-2 rounded hover:bg-gray-400 shadow-xl" 
+			onClick={() => fetch(quitEndpoint)}>
+
 			Shut down spirit-box
 			</button>
-			</>
+
+			</div>
 		);
 	}
 }

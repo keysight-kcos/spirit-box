@@ -1,3 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+	.ready {
+		@apply font-extrabold bg-green-300 text-green-800 border-2 border-green-800;
+	}
+
+	.ready:hover {
+		@apply font-extrabold bg-green-400 text-green-900 border-2 border-green-900;
+	}
+
+	tr:hover .ready {
+		@apply font-extrabold bg-green-400 text-green-900 border-2 border-green-900;
+	}
+
+	.notReady {
+		@apply font-extrabold text-red-800 bg-red-300 border-2 border-red-800;
+	}
+
+	.notReady:hover {
+		@apply font-extrabold bg-red-400 text-red-900 border-2 border-red-900;
+	}
+
+	tr:hover .notReady {
+		@apply font-extrabold bg-red-400 text-red-900 border-2 border-red-900;
+	}
+
+	.unitRow {
+		cursor: pointer;
+	}
+
+	table {
+		@apply text-left table-auto w-full font-bold shadow-xl;
+	}
+
+	.tableHeaderRow th {
+		@apply bg-indigo-600;
+	}
+
+	tr:nth-child(even) {
+		@apply bg-gray-300;
+	}
+
+	tr:nth-child(odd) {
+		@apply bg-gray-400;
+	}
+
+	.unitRow:hover  {
+		@apply bg-gray-500;
+	}
+}
+
+
+/*
 .App {
   text-align: center;
 }
@@ -10,33 +66,6 @@
 	font-weight: bold;
 	color: #ff3333;
 	margin-left: 5%;
-}
-
-.unitRow {
-	cursor: pointer;
-}
-
-.tableHeaderRow th {
-	border-bottom: inset;
-	background-color: #CD5C5C;
-}
-
-tr:nth-child(even) {
-	background-color: #f2f2f2;
-}
-
-.unitRow:hover  {
-	background-color: #ddd;
-}
-
-.ready {
-	font-weight: bold;
-	color: #04AA6D;
-}
-
-.notReady {
-	font-weight: bold;
-	color: #ff3333;
 }
 
 .unitContainer {
@@ -82,7 +111,16 @@ tr:nth-child(even) {
 	margin-bottom: 3%;
 }
 
+.commandInfoContainer {
+	background-color: grey;
+}
+
 .runsContainer {
 	margin-top: 2%;
 	margin-left: 5%;
 }
+
+.noShow {
+	display: none;
+}
+*/
