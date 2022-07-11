@@ -17,8 +17,6 @@ var alignLeftStyle = lp.NewStyle().Align(lp.Left)
 
 type Model struct {
 	cursorIndex int
-	choices []string
-	selected map[int]struct{}
 	curScreen g.Screen
 	sc *scripts.ScriptController
 	AllReady bool
@@ -26,8 +24,6 @@ type Model struct {
 
 func New(sc *scripts.ScriptController) Model {
 	return Model{
-		choices: []string{"script1", "script2", "script3"},
-		selected: make(map[int]struct{}),
 		sc: sc,
 		AllReady: false,
 	}
@@ -46,13 +42,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.cursorIndex > 0 {
 				m.cursorIndex--
 			}
-		case "enter":
-			_, ok := m.selected[m.cursorIndex]
-			if ok {
-				delete(m.selected, m.cursorIndex)
-			} else {
-				m.selected[m.cursorIndex] = struct{}{}
-			}
 		case "ctrl+c":
 			return m, tea.Quit
 		case "q":
@@ -68,29 +57,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 	return m, tea.Batch(cmds...)
 }
-
-/*func (m Model) View() string {
-    s := "View which script?\n\n"
-
-    for i, choice := range m.choices {
-
-        cursor := " "
-        if m.cursorIndex == i {
-            cursor = ">"
-        }
-
-        checked := " "
-        if _, ok := m.selected[i]; ok {
-            checked = "x"
-        }
-
-        s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
-    }
-
-    s += "\nPress q to return.\n"
-
-    return s
-}*/
 
 func (m Model) View() string {
 	var b strings.Builder
