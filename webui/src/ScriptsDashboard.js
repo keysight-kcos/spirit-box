@@ -144,7 +144,7 @@ const ScriptsDashboard = ({ handleTrackerInfo }) => {
 									{spec.totalWaitTime}
 								</td>
 									{pg.trackers === null
-										? <td><Spinner condition={false} successFunc={() => null}/></td>
+										? <td className="notReady">Waiting to execute</td>
 										: <Spinner 
 											condition={pg.trackers[ind].finished}
 											successFunc={() => trackerSuccess(pg.trackers[ind])}
