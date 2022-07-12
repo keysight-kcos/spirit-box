@@ -29,9 +29,11 @@ type Model struct {
 
 func New(sc *scripts.ScriptController) Model {
 	temp := make([]bool, len(sc.PriorityGroups))
-	for i, _ := range temp {
-		temp[i] = true
-	}
+	/*
+		for i, _ := range temp {
+			temp[i] = true
+		}
+	*/
 	return Model{
 		sc:       sc,
 		openPgs:  temp,
@@ -64,10 +66,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case g.CheckScriptsMsg:
-		m.AllReady = true
-		for _, pg := range m.sc.PriorityGroups {
-			m.AllReady = m.AllReady && pg.AllSucceeded()
-			// add something for counting how many failed
+		for i, pg := range m.sc.PriorityGroups {
+			running, numFailed := pg.GetStatus()
+			if running > 0 || numFailed > 0 {
+				m.AllReady = false
+				break
+			}
+			if i == len(m.sc.PriorityGroups)-1 {
+				m.AllReady = true
+			}
 		}
 
 		cmd := func() tea.Msg {
@@ -86,6 +93,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 func (m Model) View() string {
 	var b strings.Builder
 	var info string
+
 	if m.AllReady {
 		info = readyStyle.Render("All scripts are ready.")
 	} else {
@@ -136,7 +144,7 @@ func (m Model) View() string {
 						readyStatus = notReadyStyle.Render("Failed")
 					}
 				}
-				fmt.Fprintf(&b, "        %s %s\n", alignLeft(longestCmd, cmdStr), alignRight(20, readyStatus))
+				fmt.Fprintf(&b, "\t        %s %s\n", alignLeft(longestCmd, cmdStr), alignRight(20, readyStatus))
 			}
 			fmt.Fprintf(&b, "\n")
 		}

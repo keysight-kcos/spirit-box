@@ -5,8 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"spirit-box/services"
 	"spirit-box/scripts"
+	"spirit-box/services"
 	g "spirit-box/tui/globals"
 	"spirit-box/tui/scriptsTui"
 	"spirit-box/tui/systemd"
@@ -104,6 +104,13 @@ func (m model) View() string {
 			info = readyStyle.Render("All systemd units are ready.")
 		} else {
 			info = notReadyStyle.Render("Waiting for systemd units to be ready.")
+		}
+		fmt.Fprintf(&b, info)
+
+		if m.scripts.AllReady {
+			info = readyStyle.Render("\nAll scripts have succeeded.")
+		} else {
+			info = notReadyStyle.Render("\nAll scripts have not succeeded.")
 		}
 		fmt.Fprintf(&b, info)
 
