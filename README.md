@@ -1,7 +1,27 @@
 # spirit-box
 
+## 07/12
+Presented progress demo today. Here are our current todos:
+
+- [ ] Interactivity with script execution
+- [ ] Timestamps and PID for each individual script run
+- [ ] Exact times for systemd timestamps rather than observed times. The extra precision would be great but the method for getting exact timestamps needs to be explored.
+- [ ] Graceful handoff between spirit-box web UI and host machine's web UI.
+- [ ] Log visualization -> timeline, graphs, etc.
+- [ ] Possible use of eBPF
+- [ ] Streamlined installations onto host machines with minimal tinkering
+- [ ] Combine config files into a single file if that would provide any benefit
+- [ ] Documentation to make it easy for anyone to jump into the project and add things
+- [ ] Documentation for how the program is used
+- [ ] Option for a sequential view of all checks
+- [ ] Option to disable the ability to add more systemd units during runtime
+- [ ] Run the program on different types of devices
+- [ ] Performance and memory profiling
+- [ ] Productization -> Make it easy for others to decide if they have a need for this tool
+- [ ] Build a demo environment that demonstrates how this tool can be used in the wild, use KCOS usecases as a base
+
 ## 07/07
-Merging a bunch of stuff into main after.
+Merging a bunch of stuff into main.
 
 - Terminal interface.
 - React frontend for a web interface.

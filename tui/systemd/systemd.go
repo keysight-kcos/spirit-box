@@ -7,7 +7,6 @@ import (
 	"spirit-box/services"
 	g "spirit-box/tui/globals"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -22,8 +21,6 @@ var notReadyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("9"))
 var alignRightStyle = lp.NewStyle().Align(lp.Right)
 var alignLeftStyle = lp.NewStyle().Align(lp.Left)
 
-const systemdInterval = 500 // time between updates in milliseconds
-
 type Model struct {
 	watcher           *services.UnitWatcher
 	unitInfo          unitInfo
@@ -32,7 +29,7 @@ type Model struct {
 	spinner           spinner.Model
 	textinput         textinput.Model
 	textinputSelected bool
-	allReady          bool
+	AllReady          bool
 	/*
 		The two fields below are used when adding new units
 		while the program is running.
@@ -54,23 +51,12 @@ func New(dConn *dbus.Conn, watcher *services.UnitWatcher) Model {
 		cursorIndex: 0,
 		spinner:     s,
 		textinput:   t,
-		allReady:    false,
-	}
-}
-
-func (m Model) UpdateCmd() tea.Cmd {
-	return func() tea.Msg {
-		if m.addUnitBeforeUpdate {
-			m.watcher.AddUnit(m.newUnitName)
-		}
-		allReady := m.watcher.UpdateAll()
-		time.Sleep(systemdInterval * time.Millisecond)
-		return g.SystemdUpdateMsg(allReady)
+		AllReady:    false,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.UpdateCmd(), func() tea.Msg { return m.spinner.Tick() })
+	return func() tea.Msg { return m.spinner.Tick() }
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
@@ -94,6 +80,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.newUnitName = m.textinput.Value()
 					m.addUnitBeforeUpdate = true
 					m.textinput.SetValue("")
+					return m, tea.Batch(cmds...)
 				}
 			} else {
 				switch msg.String() {
@@ -128,12 +115,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case g.SystemdUpdateMsg:
-		cmds = append(cmds, m.UpdateCmd())
-		m.addUnitBeforeUpdate = false
+	case g.CheckSystemdMsg:
+		if m.addUnitBeforeUpdate {
+			m.watcher.AddUnit(m.newUnitName)
+			m.addUnitBeforeUpdate = false
+		}
+		m.AllReady = m.watcher.UpdateAll()
+
 		//log.Printf("From systemd, SystemddUpdateMsg")
-		m.allReady = bool(msg)
-		return m, tea.Batch(cmds...)
+		return m, nil
 	case g.SwitchScreenMsg:
 		m.curScreen = g.Screen(msg)
 		log.Printf("From systemd, SwitchScreenMsg: %s", m.curScreen.String())
@@ -152,7 +142,7 @@ func (m Model) View() string {
 	switch m.curScreen {
 	case g.Systemd:
 		var info string
-		if m.allReady {
+		if m.AllReady {
 			info = readyStyle.Render("All units are ready.")
 		} else {
 			info = notReadyStyle.Render(m.spinner.View())
