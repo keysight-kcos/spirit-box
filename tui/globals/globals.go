@@ -5,6 +5,7 @@ package globals
 type SystemdUpdateMsg bool // true when all units are ready
 
 type CheckScriptsMsg struct{}
+type CheckSystemdMsg struct{}
 
 type Screen int
 

@@ -6,7 +6,6 @@ import (
 	"spirit-box/scripts"
 	g "spirit-box/tui/globals"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	lp "github.com/charmbracelet/lipgloss"
@@ -16,8 +15,6 @@ var readyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("10"))
 var notReadyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("9"))
 var alignRightStyle = lp.NewStyle().Align(lp.Right)
 var alignLeftStyle = lp.NewStyle().Align(lp.Left)
-
-const UPDATE_INTERVAL = 500 // update interval in milliseconds
 
 type Model struct {
 	cursorIndex int
@@ -50,17 +47,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.cursorIndex < len(m.sc.PriorityGroups)-1 {
 				m.cursorIndex++
 			}
+			return m, nil
 		case "k", "up":
 			if m.cursorIndex > 0 {
 				m.cursorIndex--
 			}
+			return m, nil
 		case "enter":
 			m.openPgs[m.cursorIndex] = !m.openPgs[m.cursorIndex]
+			return m, nil
 		case "ctrl+c":
 			return m, tea.Quit
 		case "q":
-			cmd := func() tea.Msg { return g.SwitchScreenMsg(g.TopLevel) }
-			cmds = append(cmds, cmd)
+			return m, func() tea.Msg { return g.SwitchScreenMsg(g.TopLevel) }
 		}
 	}
 
@@ -76,13 +75,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.AllReady = true
 			}
 		}
+		log.Printf("Scripts AllReady: %t", m.AllReady)
 
-		cmd := func() tea.Msg {
-			time.Sleep(time.Duration(UPDATE_INTERVAL) * time.Millisecond)
-			return g.CheckScriptsMsg(struct{}{})
-		}
-		cmds = append(cmds, cmd)
-		return m, tea.Batch(cmds...)
+		return m, nil
 	case g.SwitchScreenMsg:
 		m.curScreen = g.Screen(msg)
 		log.Printf("From scripts, SwitchScreenMsg: %s", m.curScreen.String())

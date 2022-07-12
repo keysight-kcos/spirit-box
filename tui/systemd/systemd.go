@@ -7,7 +7,6 @@ import (
 	"spirit-box/services"
 	g "spirit-box/tui/globals"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -21,8 +20,6 @@ var readyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("10"))
 var notReadyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("9"))
 var alignRightStyle = lp.NewStyle().Align(lp.Right)
 var alignLeftStyle = lp.NewStyle().Align(lp.Left)
-
-const systemdInterval = 1000 // time between updates in milliseconds
 
 type Model struct {
 	watcher           *services.UnitWatcher
@@ -58,19 +55,8 @@ func New(dConn *dbus.Conn, watcher *services.UnitWatcher) Model {
 	}
 }
 
-func (m Model) UpdateCmd() tea.Cmd {
-	return func() tea.Msg {
-		if m.addUnitBeforeUpdate {
-			m.watcher.AddUnit(m.newUnitName)
-		}
-		AllReady := m.watcher.UpdateAll()
-		time.Sleep(systemdInterval * time.Millisecond)
-		return g.SystemdUpdateMsg(AllReady)
-	}
-}
-
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.UpdateCmd(), func() tea.Msg { return m.spinner.Tick() })
+	return func() tea.Msg { return m.spinner.Tick() }
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
@@ -129,12 +115,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case g.SystemdUpdateMsg:
-		cmds = append(cmds, m.UpdateCmd())
-		m.addUnitBeforeUpdate = false
+	case g.CheckSystemdMsg:
+		if m.addUnitBeforeUpdate {
+			m.watcher.AddUnit(m.newUnitName)
+			m.addUnitBeforeUpdate = false
+		}
+		m.AllReady = m.watcher.UpdateAll()
+
 		//log.Printf("From systemd, SystemddUpdateMsg")
-		m.AllReady = bool(msg)
-		return m, tea.Batch(cmds...)
+		return m, nil
 	case g.SwitchScreenMsg:
 		m.curScreen = g.Screen(msg)
 		log.Printf("From systemd, SwitchScreenMsg: %s", m.curScreen.String())

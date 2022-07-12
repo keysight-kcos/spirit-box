@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"spirit-box/scripts"
 	"spirit-box/services"
@@ -80,8 +81,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Printf("From toplevel, SwitchScreenMsg: %s", m.curScreen.String())
 		m.systemd, cmd = m.systemd.Update(msg)
 		cmds = append(cmds, cmd)
-	case g.SystemdUpdateMsg:
+	case g.CheckSystemdMsg:
 		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	case g.CheckScriptsMsg:
+		m.scripts, cmd = m.scripts.Update(msg)
 		cmds = append(cmds, cmd)
 	case tea.WindowSizeMsg:
 		m.systemd, cmd = m.systemd.Update(msg)
@@ -146,5 +150,13 @@ func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc
 func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc *scripts.ScriptController) *tea.Program {
 	model := initialModel(dConn, watcher, ip, sc)
 	p := tea.NewProgram(model)
+	// update ticker
+	go func(p *tea.Program) {
+		for {
+			p.Send(g.CheckSystemdMsg(struct{}{}))
+			p.Send(g.CheckScriptsMsg(struct{}{}))
+			time.Sleep(time.Second)
+		}
+	}(p)
 	return p
 }
