@@ -138,19 +138,66 @@ func (pg *PriorityGroup) RunAll() {
 				}
 				time.Sleep(time.Duration(spec.RetryTimeout) * time.Millisecond)
 			}
+
 			pg.Trackers[index].EndTime = time.Now()
 			pg.Trackers[index].Finished = true
-			go func(spec *ScriptSpec, tracker *ScriptTracker) {
+
+			go func(spec *ScriptSpec, tracker *ScriptTracker) { // logging
 				scriptLog := NewScriptLogObj(spec, tracker)
 				le := logging.NewLogEvent(scriptLog.LogLine(), scriptLog)
 				le.StartTime = scriptLog.StartTime
 				le.EndTime = scriptLog.EndTime
 				logging.Logs.AddLogEvent(le)
 			}(s, pg.Trackers[index])
+
 			wg.Done()
 		}(i, s)
 	}
 	wg.Wait()
+}
+
+func (pg *PriorityGroup) AllSucceeded() bool {
+	if pg.Trackers == nil {
+		return false
+	}
+
+	all := true
+	for _, tracker := range pg.Trackers {
+		all = all && tracker.Succeeded()
+	}
+	return all
+}
+
+func (pg *PriorityGroup) GetStatus() (int, int) {
+	running := 0
+	numFailed := 0
+
+	for _, tracker := range pg.Trackers {
+		if !tracker.Finished {
+			running += 1
+			continue
+		}
+		if !tracker.Succeeded() {
+			numFailed += 1
+		}
+	}
+
+	return running, numFailed
+}
+
+func (pg *PriorityGroup) GetLongestCmdLength() int { // for formatting in tui
+	max := 0
+	for _, spec := range pg.Specs {
+		length := len(spec.Cmd)
+		for _, arg := range spec.Args {
+			length += len(arg) + 1
+		}
+
+		if length > max {
+			max = length
+		}
+	}
+	return max
 }
 
 func (pg *PriorityGroup) PrintAfterRun() { // Print the results of a run. For debugging.
@@ -170,6 +217,17 @@ func (sc *ScriptController) RunPriorityGroups() {
 		pg.RunAll()
 		//pg.PrintAfterRun()
 	}
+}
+
+func (sc *ScriptController) GetLongestCmdLength() int { // for formatting in tui
+	max := 0
+	for _, pg := range sc.PriorityGroups {
+		length := pg.GetLongestCmdLength()
+		if length > max {
+			max = length
+		}
+	}
+	return max
 }
 
 func (sc *ScriptController) PrintPriorityGroups() { // for debugging
