@@ -126,20 +126,36 @@ func (m Model) View() string {
 
 		if m.openPgs[i] {
 			fmt.Fprintf(&b, "\n")
+			left := fmt.Sprintf("Command")
+			right := fmt.Sprintf("%s  %s  %s  %s",
+				alignRight(len("# Runs"), "# Runs"),
+				alignRight(len("Retry Timeout"), "Retry Timeout"),
+				alignRight(len("Total Timeout"), "Total Timeout"),
+				alignRight(len("Result"), "Result"),
+			)
+			fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, left), alignRight(46, right))
 			for j, spec := range pg.Specs {
 				cmdStr := spec.ToString()
+				numRuns := 0
 				readyStatus = notReadyStyle.Render("Awaiting execution.")
 				if pg.Trackers != nil {
 					tracker := pg.Trackers[j]
+					numRuns = len(tracker.Runs)
 					if !tracker.Finished {
 						readyStatus = notReadyStyle.Render("Running...")
 					} else if tracker.Succeeded() {
 						readyStatus = readyStyle.Render("Succeeded")
 					} else {
-						readyStatus = notReadyStyle.Render("Failed")
+						readyStatus = notReadyStyle.Render("Failed   ")
 					}
 				}
-				fmt.Fprintf(&b, "\t        %s %s\n", alignLeft(longestCmd, cmdStr), alignRight(20, readyStatus))
+				right := fmt.Sprintf("%s   %s   %s   %s",
+					alignRight(len(fmt.Sprintf("  %d", numRuns)), fmt.Sprintf("%d", numRuns)),
+					alignRight(len(fmt.Sprintf("    %d", spec.RetryTimeout)), fmt.Sprintf("%d", spec.RetryTimeout)),
+					alignRight(len(fmt.Sprintf("           %d", spec.TotalWaitTime)), fmt.Sprintf("%d\t\t", spec.TotalWaitTime)),
+					alignRight(len(readyStatus)-2, readyStatus),
+				)
+				fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, cmdStr), right)
 			}
 			fmt.Fprintf(&b, "\n")
 		}
