@@ -22,7 +22,7 @@ const ScriptsDashboard = ({ handleTrackerInfo }) => {
 				setPriorityGroups(data);
 			})
 			.catch((err) => setPriorityGroups([]));
-		}, 2000));
+		}, 1000));
 	}, [scriptsEndpoint]);
 
 	const trackerFoundSuccess = (tracker) => tracker.runs[tracker.runs.length-1].success;
@@ -43,8 +43,9 @@ const ScriptsDashboard = ({ handleTrackerInfo }) => {
 	};
 
 	const ReadyMessage = () => {
-		const isReady = "font-bold rounded-md bg-green-300 p-2 mb-3 w-40 shadow-xl";
-		const isNotReady = "font-bold rounded-md bg-red-300 p-2 mb-3 w-48 shadow-xl";
+		const isReady = "font-bold rounded-sm bg-emerald-300 p-2 mb-3 w-40 shadow-xl";
+		const loading = "font-bold rounded-sm bg-amber-500 p-2 mb-3 w-40 shadow-xl";
+		const isNotReady = "font-bold rounded-sm bg-rose-500 p-2 mb-3 w-48 shadow-xl";
 
 		let scriptsFinished = 0;
 		let scriptsSucceeded = 0;
@@ -72,7 +73,7 @@ const ScriptsDashboard = ({ handleTrackerInfo }) => {
 
 		if (scriptsFinished < numScripts) {
 			return (
-				<div className={isNotReady}>
+				<div className={loading}>
 					{waiting}
 				</div>
 			);
@@ -92,10 +93,10 @@ const ScriptsDashboard = ({ handleTrackerInfo }) => {
 	};
 
 	if (priorityGroups.length === 0) {
-		return <div className="notReady">Could not retrieve script info from spirit-box.</div>;
+		return <div className="notReady mb-5">Could not retrieve script info from spirit-box.</div>;
 	} else {
 		return (
-			<div className="w-full">
+			<div className="w-full text-sm">
 			<ReadyMessage />
 			<table>
 				<thead>
@@ -144,7 +145,7 @@ const ScriptsDashboard = ({ handleTrackerInfo }) => {
 									{spec.totalWaitTime}
 								</td>
 									{pg.trackers === null
-										? <td className="notReady">Waiting to execute</td>
+										? <td className="caution">Waiting to execute</td>
 										: <Spinner 
 											condition={pg.trackers[ind].finished}
 											successFunc={() => trackerSuccess(pg.trackers[ind])}

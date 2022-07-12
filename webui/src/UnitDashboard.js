@@ -64,8 +64,8 @@ const UnitDashboard = ({ handleUnitInfo }) => {
 	};
 
 	const ReadyMessage = () => {
-		const isReady = "font-bold rounded-md bg-green-300 p-2 mb-3 w-40 shadow-xl";
-		const isNotReady = "font-bold rounded-md bg-red-300 p-2 mb-3 w-48 shadow-xl";
+		const isReady = "font-bold rounded-sm bg-emerald-300 p-2 mb-3 w-40 shadow-xl";
+		const isNotReady = "font-bold rounded-sm bg-rose-500 p-2 mb-3 w-48 shadow-xl";
 		if (notReady === 0) {
 			return (
 				<div className={isReady}>
@@ -85,10 +85,10 @@ const UnitDashboard = ({ handleUnitInfo }) => {
 		return <div className="notReady">Could not retrieve systemd info from spirit-box.</div>;
 	} else {
 		return (
-			<div className="dashboard w-full mt-10">
+			<div className="dashboard w-full mt-10 text-sm">
 			<div className="unitContainer">
 				<ReadyMessage />
-				<table className="table-auto text-left p-10 rounded shadow-xl w-full">
+				<table className="table-auto text-left p-10 rounded shadow-xl">
 				<thead>
 				<tr className="tableHeaderRow">
 					<th>Unit</th>
