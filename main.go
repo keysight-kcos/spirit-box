@@ -128,7 +128,7 @@ func main() {
 	log.Print("Cleanup.")
 
 	// Dump log lines to stdout for dev purposes.
-	fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())
+	fmt.Printf("\nLog Lines (in order of insertion):\n")
 	for _, event := range logging.Logs.Events {
 		fmt.Println(event.LogLine())
 	}
