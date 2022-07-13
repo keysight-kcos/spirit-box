@@ -26,7 +26,10 @@ type ScriptSpec struct {
 }
 
 func (s *ScriptSpec) Run() ScriptResult {
-	bytes, err := exec.Command(s.Cmd, s.Args...).Output()
+	start := time.Now()
+	cmd := exec.Command(s.Cmd, s.Args...)
+	bytes, err := cmd.Output()
+	elapsed := time.Since(start)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,6 +39,9 @@ func (s *ScriptSpec) Run() ScriptResult {
 	if err != nil {
 		log.Fatal(err)
 	}
+	res.Pid = cmd.Process.Pid
+	res.StartTime = start
+	res.ElapsedTime = elapsed
 
 	return res
 }
@@ -45,8 +51,11 @@ func (s *ScriptSpec) ToString() string {
 }
 
 type ScriptResult struct {
-	Success bool   `json:"success"`
-	Info    string `json:"info"` // More detailed information the script may want to return.
+	Success bool		`json:"success"`
+	Info    string		`json:"info"` // More detailed information the script may want to return.
+	Pid	int		`json:"-"`
+	StartTime time.Time	`json:"-"`
+	ElapsedTime time.Duration	`json:"-"`
 }
 
 type ScriptTracker struct {
