@@ -4,8 +4,8 @@
 Presented progress demo today. Here are our current todos:
 
 - [ ] Interactivity with script execution
-- [ ] Timestamps and PID for each individual script run
-- [ ] Exact times for systemd timestamps rather than observed times. The extra precision would be great but the method for getting exact timestamps needs to be explored.
+- [ ] Timestamps and PID for each individual script run -> essential
+- [ ] Exact times for systemd timestamps rather than observed times. The extra precision would be great but the method for getting exact timestamps needs to be explored. -> essential
 - [ ] Graceful handoff between spirit-box web UI and host machine's web UI.
 - [ ] Log visualization -> timeline, graphs, etc.
 - [ ] Possible use of eBPF
