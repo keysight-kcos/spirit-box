@@ -133,7 +133,7 @@ func (m Model) View() string {
 				alignRight(len("Total Timeout"), "Total Timeout"),
 				alignRight(len("Result"), "Result"),
 			)
-			fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, left), alignRight(46, right))
+			fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, left), alignRight(len(right)+2, right))
 			for j, spec := range pg.Specs {
 				cmdStr := spec.ToString()
 				numRuns := 0
@@ -150,10 +150,10 @@ func (m Model) View() string {
 					}
 				}
 				right := fmt.Sprintf("%s   %s   %s   %s",
-					alignRight(len(fmt.Sprintf("  %d", numRuns)), fmt.Sprintf("%d", numRuns)),
-					alignRight(len(fmt.Sprintf("    %d", spec.RetryTimeout)), fmt.Sprintf("%d", spec.RetryTimeout)),
-					alignRight(len(fmt.Sprintf("           %d", spec.TotalWaitTime)), fmt.Sprintf("%d\t\t", spec.TotalWaitTime)),
-					alignRight(len(readyStatus)-2, readyStatus),
+					alignRight(len("# Runs"), fmt.Sprintf("%d", numRuns)),
+					alignRight(len("Retry Timeout"), fmt.Sprintf("%d", spec.RetryTimeout)),
+					alignRight(len("Total Timeout"), fmt.Sprintf("%d", spec.TotalWaitTime)),
+					alignRight(0, readyStatus),
 				)
 				fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, cmdStr), right)
 			}
