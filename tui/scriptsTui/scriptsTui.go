@@ -22,10 +22,12 @@ type Model struct {
 	sc          *scripts.ScriptController
 	AllReady    bool
 	openPgs     []bool
+	scriptCursors     []int
 }
 
 func New(sc *scripts.ScriptController) Model {
-	temp := make([]bool, len(sc.PriorityGroups))
+	openPgs := make([]bool, len(sc.PriorityGroups))
+	scriptCursors := make([]int, len(sc.PriorityGroups))
 	/*
 		for i, _ := range temp {
 			temp[i] = true
@@ -33,7 +35,8 @@ func New(sc *scripts.ScriptController) Model {
 	*/
 	return Model{
 		sc:       sc,
-		openPgs:  temp,
+		openPgs:  openPgs,
+		scriptCursors:  scriptCursors,
 		AllReady: false,
 	}
 }
@@ -51,6 +54,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case "k", "up":
 			if m.cursorIndex > 0 {
 				m.cursorIndex--
+			}
+			return m, nil
+		case "right":
+			if m.openPgs[m.cursorIndex]{
+				if m.scriptCursors[m.cursorIndex] < len(m.sc.PriorityGroups[m.cursorIndex].Specs)-1 {
+					m.scriptCursors[m.cursorIndex]++
+				}
+			}
+			return m, nil
+		case "left":
+			if m.openPgs[m.cursorIndex]{
+				if m.scriptCursors[m.cursorIndex] > 0 {
+					m.scriptCursors[m.cursorIndex]--
+				}
 			}
 			return m, nil
 		case "enter":
@@ -136,6 +153,9 @@ func (m Model) View() string {
 			fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, left), alignRight(len(right)+2, right))
 			for j, spec := range pg.Specs {
 				cmdStr := spec.ToString()
+				if j == m.scriptCursors[m.cursorIndex] && (m.cursorIndex == i){
+					cmdStr = "-> " + cmdStr
+				}
 				numRuns := 0
 				readyStatus = notReadyStyle.Render("Awaiting execution.")
 				if pg.Trackers != nil {
