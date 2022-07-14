@@ -68,10 +68,10 @@ func (uw *UnitWatcher) InitializeStates() bool {
 	return allReady
 }
 
-func (uw *UnitWatcher) InitializeState(u *UnitInfo) {
+func (uw *UnitWatcher) InitializeState(u *UnitInfo) error {
 	properties, err := uw.DConn.GetUnitProperties(u.Name)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// type assertions
@@ -82,15 +82,18 @@ func (uw *UnitWatcher) InitializeState(u *UnitInfo) {
 	u.Description = s4
 
 	u.update([3]string{s1, s2, s3}, properties)
+	return nil
 }
 
 func (uw *UnitWatcher) AddUnit(name string) {
 	uw.mu.Lock()
 	defer uw.mu.Unlock()
 	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, time.Now(), uw}
-	uw.InitializeState(newUnit)
+	err := uw.InitializeState(newUnit)
+	if err != nil {
+		return // no feedback on failure
+	}
 	uw.Units = append(uw.Units, newUnit)
-	// Change logic for initialization?
 }
 
 func (uw *UnitWatcher) AllReadyStatus() string {
