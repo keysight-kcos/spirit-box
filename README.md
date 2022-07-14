@@ -1,5 +1,19 @@
 # spirit-box
 
+## 07/14
+
+Program behavior:
+
+While the program is running:
+	- Whatever is being served on port 80 can only be seen on port 8081
+	- spirit-box's web page can be seen on both port 80 and port 8080
+
+Once the program is closed you can see whatever is on port 80 as you normally would.
+
+
+The iptables commands in the program need root permission so build main.go first and run with sudo.
+
+
 ## 07/12
 Presented progress demo today. Here are our current todos:
 

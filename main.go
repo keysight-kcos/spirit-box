@@ -8,11 +8,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"spirit-box/device"
 	"spirit-box/logging"
 	"spirit-box/scripts"
 	"spirit-box/services"
 	"spirit-box/tui"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
@@ -20,6 +22,7 @@ import (
 )
 
 const PORT = "8080"
+const TEMP_PORT = "8081" // redirect port 80 output here while waiting for host UI to come up
 const CHANNEL_BUFFER = 100
 const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
 
@@ -57,9 +60,51 @@ func getFileSystem() http.FileSystem {
 	return http.FS(fsys)
 }
 
+func setRules(addFlag, from, to string) error {
+	// -A or -D for addFlag
+	args := strings.Split(
+		fmt.Sprintf("-t nat %s PREROUTING -i eth0 -p tcp --dport %s -j REDIRECT --to %s", addFlag, from, to), " ")
+	cmd := exec.Command("iptables", args...)
+	bytes, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("First: %w: %s, %v, %d", err, string(bytes), args, len(args))
+	}
+
+	args = strings.Split(
+		fmt.Sprintf("-t nat %s OUTPUT -p tcp --dport %s -j REDIRECT --to %s", addFlag, from, to), " ")
+	cmd = exec.Command("iptables", args...)
+	bytes, err = cmd.Output()
+	if err != nil {
+		return fmt.Errorf("Second: %w: %s, %v, %d", err, string(bytes), args, len(args))
+	}
+
+	return nil
+}
+
+func setPortForwarding() error {
+	err := setRules("-A", "80", PORT)
+	if err != nil {
+		return err
+	}
+	return setRules("-A", TEMP_PORT, "80")
+}
+
+func unsetPortForwarding() error {
+	err := setRules("-D", "80", PORT)
+	if err != nil {
+		return err
+	}
+	return setRules("-D", TEMP_PORT, "80")
+}
+
 func main() {
 	ip := device.GetIPv4Addr("eth0")
 	ip = ip[:len(ip)-3]
+
+	err := setPortForwarding()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	dConn, err := dbus.New()
 	if err != nil {
@@ -126,6 +171,7 @@ func main() {
 	}
 
 	log.Print("Cleanup.")
+	unsetPortForwarding()
 
 	// Dump log lines to stdout for dev purposes.
 	fmt.Printf("\nLog Lines (in order of insertion):\n")

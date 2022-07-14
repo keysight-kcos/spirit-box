@@ -9,6 +9,7 @@ allPaths=(/spirit-box@.service /disableSystemdLogging.service /getty@.service.d/
 idirs=(/getty@.service.d /serial-getty@.service.d)  # intermediate directories
 
 $debug cp /usr/bin/spirit-box "$DEBPATH"/usr/bin/
+$debug cp /usr/bin/dummyScript "$DEBPATH"/usr/bin/
 $debug rm -rf ${DEBPATH}${CONFPATH}/*
 
 for d in ${idirs[@]}; do # make intermediate directories if they don't exist
