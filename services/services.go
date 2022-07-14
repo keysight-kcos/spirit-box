@@ -88,7 +88,7 @@ func (uw *UnitWatcher) InitializeState(u *UnitInfo) error {
 func (uw *UnitWatcher) AddUnit(name string) {
 	uw.mu.Lock()
 	defer uw.mu.Unlock()
-	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, time.Now(), uw}
+	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, SYSTEMD_START_TIME, uw}
 	err := uw.InitializeState(newUnit)
 	if err != nil {
 		return // no feedback on failure
