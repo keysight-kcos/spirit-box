@@ -5,6 +5,7 @@
 Program behavior:
 
 While the program is running:
+	
 	- spirit-box's web page can be seen on both port 80 and port 8080
 	- Once there's anything being served on port 80 the iptables rules are undone. Reload page to see what's being served on port 80.
 
