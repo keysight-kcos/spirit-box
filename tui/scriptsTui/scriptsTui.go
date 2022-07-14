@@ -175,7 +175,7 @@ func (m Model) View() string {
 					alignRight(len("Total Timeout"), fmt.Sprintf("%d", spec.TotalWaitTime)),
 					alignRight(0, readyStatus),
 				)
-				fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, cmdStr), right)
+				fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd+len("-> "), cmdStr), right)
 			}
 			fmt.Fprintf(&b, "\n")
 		}
