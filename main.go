@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"spirit-box/services"
 	"spirit-box/tui"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
@@ -22,9 +24,7 @@ import (
 )
 
 const PORT = "8080"
-const TEMP_PORT = "8081" // redirect port 80 output here while waiting for host UI to come up
-const CHANNEL_BUFFER = 100
-const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
+const TEMP_PORT = "8081" // redirect port 80 output here while waiting for host UI to come up const CHANNEL_BUFFER = 100 const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
 
 //go:embed frontend_build_files
 var embeddedFiles embed.FS
@@ -98,13 +98,33 @@ func unsetPortForwarding() error {
 }
 
 func main() {
+	quitWeb := make(chan struct{})
+	quitTui := make(chan struct{})
+	rebootServer := make(chan struct{})
+
 	ip := device.GetIPv4Addr("eth0")
 	ip = ip[:len(ip)-3]
 
+	// apply iptables rules
 	err := setPortForwarding()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	go func() {
+		for {
+			res, _ := http.Get(fmt.Sprintf("http://localhost:%s", TEMP_PORT))
+			if res != nil { // Something's being served on port 80 (redirected to TEMP_PORT)
+				err := unsetPortForwarding()
+				if err != nil {
+					log.Fatal(err)
+				}
+				rebootServer <- struct{}{}
+				break
+			}
+			time.Sleep(time.Second)
+		}
+	}()
 
 	dConn, err := dbus.New()
 	if err != nil {
@@ -116,9 +136,6 @@ func main() {
 	uw := services.NewWatcher(dConn)
 	sc := scripts.NewController()
 
-	quitWeb := make(chan struct{})
-	quitTui := make(chan struct{})
-
 	// setup endpoints for server
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(getFileSystem()))
@@ -129,10 +146,17 @@ func main() {
 	log.Printf("Starting server on port %s.", PORT)
 	handler := cors.Default().Handler(mux)
 
-	go func() { // start server
-		err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), handler)
-		if err != nil {
-			log.Fatal("ListenAndServe:" + err.Error())
+	go func() { // start server, reboot if reboot message is sent
+		for {
+			s := http.Server{Addr: fmt.Sprintf(":%s", PORT), Handler: handler}
+			go func() {
+				time.Sleep(time.Duration(500) * time.Millisecond)
+				<-rebootServer
+				s.Shutdown(context.Background())
+			}()
+			if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatal("ListenAndServe:" + err.Error())
+			}
 		}
 	}()
 
