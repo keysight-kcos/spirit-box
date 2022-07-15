@@ -61,17 +61,6 @@ Here are our current todos listed in approximate order of importance:
 - [x] Timestamps and PID for each individual script run -> this is now included in logs
 - [x] Exact times for systemd timestamps rather than observed times. The extra precision would be great but the method for getting exact timestamps needs to be explored.
 
-## 07/14
-
-Program behavior:
-
-While the program is running:
-	
-	- spirit-box's web page can be seen on both port 80 and port 8080
-	- Once there's anything being served on port 80 the iptables rules are undone. Reload page to see what's being served on port 80.
-
-The iptables commands in the program need root permission so build main.go first and run with sudo.
-
 ## 07/12
 Presented progress demo today. Here are our current todos:
 
