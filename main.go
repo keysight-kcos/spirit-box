@@ -9,13 +9,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"spirit-box/device"
 	"spirit-box/logging"
 	"spirit-box/scripts"
 	"spirit-box/services"
 	"spirit-box/tui"
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,11 +21,10 @@ import (
 	"github.com/rs/cors"
 )
 
-const PORT = "8080"
-const TEMP_PORT = "8081" // redirect port 80 output here while waiting for host UI to come up const CHANNEL_BUFFER = 100 const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
-
-//go:embed frontend_build_files
+//go:embed webui/build
 var embeddedFiles embed.FS
+
+var HOST_IS_UP = false
 
 func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -51,8 +48,17 @@ func createQuitHandler(quit chan struct{}) func(http.ResponseWriter, *http.Reque
 	}
 }
 
+// so frontend knows if host machine's default web page is up
+func hostUpHandler(w http.ResponseWriter, r *http.Request) {
+	if HOST_IS_UP {
+		fmt.Fprintf(w, "up")
+	} else {
+		fmt.Fprintf(w, "not up")
+	}
+}
+
 func getFileSystem() http.FileSystem {
-	fsys, err := fs.Sub(embeddedFiles, "frontend_build_files")
+	fsys, err := fs.Sub(embeddedFiles, "webui/build")
 	if err != nil {
 		panic(err)
 	}
@@ -60,65 +66,31 @@ func getFileSystem() http.FileSystem {
 	return http.FS(fsys)
 }
 
-func setRules(addFlag, from, to string) error {
-	// -A or -D for addFlag
-	args := strings.Split(
-		fmt.Sprintf("-t nat %s PREROUTING -i eth0 -p tcp --dport %s -j REDIRECT --to %s", addFlag, from, to), " ")
-	cmd := exec.Command("iptables", args...)
-	bytes, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("First: %w: %s, %v, %d", err, string(bytes), args, len(args))
-	}
-
-	args = strings.Split(
-		fmt.Sprintf("-t nat %s OUTPUT -p tcp --dport %s -j REDIRECT --to %s", addFlag, from, to), " ")
-	cmd = exec.Command("iptables", args...)
-	bytes, err = cmd.Output()
-	if err != nil {
-		return fmt.Errorf("Second: %w: %s, %v, %d", err, string(bytes), args, len(args))
-	}
-
-	return nil
-}
-
-func setPortForwarding() error {
-	err := setRules("-A", "80", PORT)
-	if err != nil {
-		return err
-	}
-	return setRules("-A", TEMP_PORT, "80")
-}
-
-func unsetPortForwarding() error {
-	err := setRules("-D", "80", PORT)
-	if err != nil {
-		return err
-	}
-	return setRules("-D", TEMP_PORT, "80")
-}
-
 func main() {
 	quitWeb := make(chan struct{})
 	quitTui := make(chan struct{})
 	rebootServer := make(chan struct{})
 
-	ip := device.GetIPv4Addr("eth0")
+	ip := device.GetIPv4Addr(device.NIC)
 	ip = ip[:len(ip)-3]
 
+	device.LoadNetworkConfig()
+
 	// apply iptables rules
-	err := setPortForwarding()
+	err := device.SetPortForwarding()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	go func() {
 		for {
-			res, _ := http.Get(fmt.Sprintf("http://localhost:%s", TEMP_PORT))
+			res, _ := http.Get(fmt.Sprintf("http://localhost:%s", device.TEMP_PORT))
 			if res != nil { // Something's being served on port 80 (redirected to TEMP_PORT)
-				err := unsetPortForwarding()
+				err := device.UnsetPortForwarding()
 				if err != nil {
 					log.Fatal(err)
 				}
+				HOST_IS_UP = true
 				rebootServer <- struct{}{}
 				break
 			}
@@ -142,13 +114,14 @@ func main() {
 	mux.HandleFunc("/systemd", createSystemdHandler(uw))
 	mux.HandleFunc("/scripts", createScriptsHandler(sc))
 	mux.HandleFunc("/quit", createQuitHandler(quitWeb))
+	mux.HandleFunc("/host", hostUpHandler)
 
-	log.Printf("Starting server on port %s.", PORT)
+	log.Printf("Starting server on port %s.", device.SERVER_PORT)
 	handler := cors.Default().Handler(mux)
 
 	go func() { // start server, reboot if reboot message is sent
 		for {
-			s := http.Server{Addr: fmt.Sprintf(":%s", PORT), Handler: handler}
+			s := http.Server{Addr: fmt.Sprintf(":%s", device.SERVER_PORT), Handler: handler}
 			go func() {
 				time.Sleep(time.Duration(500) * time.Millisecond)
 				<-rebootServer
@@ -195,7 +168,7 @@ func main() {
 	}
 
 	log.Print("Cleanup.")
-	unsetPortForwarding()
+	device.UnsetPortForwarding() // No problems if rules were already unset.
 
 	// Dump log lines to stdout for dev purposes.
 	fmt.Printf("\nLog Lines (in order of insertion):\n")

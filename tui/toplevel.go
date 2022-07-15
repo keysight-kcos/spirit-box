@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"spirit-box/device"
 	"spirit-box/scripts"
 	"spirit-box/services"
 	g "spirit-box/tui/globals"
@@ -143,7 +144,7 @@ func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc
 		curScreen:   g.TopLevel,
 		systemd:     systemd.New(dConn, watcher),
 		scripts:     scriptsTui.New(sc),
-		ipStr:       fmt.Sprintf("Serving web ui at http://%s:8080", ip),
+		ipStr:       fmt.Sprintf("Serving web ui at http://%s:%s", ip, device.SERVER_PORT),
 	}
 }
 
