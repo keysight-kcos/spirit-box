@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import './App.css';
 
 const UnitDashboard = ({ handleUnitInfo }) => {
-	const unitsEndpoint = `http://${window.location.hostname}:8080/systemd`;
+	const unitsEndpoint = `http://${window.location.hostname}:${window.location.port}/systemd`;
 	const [units, setUnits] = useState([]);
 	const [notReady, setNotReady] = useState(0);
 

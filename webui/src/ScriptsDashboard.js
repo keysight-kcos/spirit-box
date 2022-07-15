@@ -3,7 +3,7 @@ import Spinner from "./Spinner.js";
 import './App.css';
 
 const ScriptsDashboard = ({ handleTrackerInfo }) => {
-	const scriptsEndpoint = `http://${window.location.hostname}:8080/scripts`;
+	const scriptsEndpoint = `http://${window.location.hostname}:${window.location.port}/scripts`;
 	const [priorityGroups, setPriorityGroups] = useState([]);
 
 	useEffect(() => {
