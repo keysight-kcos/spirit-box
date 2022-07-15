@@ -21,6 +21,7 @@ import (
 
 var readyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("10"))
 var notReadyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("9"))
+var alignRightStyle = lp.NewStyle().Align(lp.Right)
 
 type model struct {
 	options     []string
@@ -29,15 +30,18 @@ type model struct {
 	systemd     systemd.Model
 	scripts     scriptsTui.Model
 	ipStr       string
+	spinner     spinner.Model
 }
 
 func (m model) Init() tea.Cmd {
-	return m.systemd.Init()
+	return tea.Batch(m.systemd.Init(), func() tea.Msg { return m.spinner.Tick() })
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	cmds := make([]tea.Cmd, 0)
+	m.spinner, cmd = m.spinner.Update(msg)
+	cmds = append(cmds, cmd)
 
 	switch m.curScreen {
 	case g.TopLevel:
@@ -120,12 +124,41 @@ func (m model) View() string {
 		fmt.Fprintf(&b, info)
 
 		fmt.Fprintf(&b, fmt.Sprintf("\n\n%s\n\n", m.ipStr))
+
+		var readyStatus string
+		for _, u := range m.systemd.Watcher.Units {
+			if u.Ready {
+				readyStatus = readyStyle.Render("READY")
+			} else {
+				readyStatus = notReadyStyle.Render(m.spinner.View())
+			}
+			left := u.Name + ":"
+			fmt.Fprintf(&b, "%s%s\n", left, alignRight(80-len(left), readyStatus))
+		}
+
+		for _, s := range m.scripts.GetScriptStatuses() {
+			if s.Status == 0 {
+				continue
+			}
+			switch s.Status {
+			case 2:
+				readyStatus = notReadyStyle.Render("FAILED")
+			case 3:
+				readyStatus = readyStyle.Render("SUCCEEDED")
+			default:
+				readyStatus = notReadyStyle.Render(m.spinner.View())
+			}
+			fmt.Fprintf(&b, "%s%s\n", s.Cmd, alignRight(80-len(s.Cmd), readyStatus))
+		}
+
+		fmt.Fprintf(&b, "\n")
 		for i, option := range m.options {
 			if i == m.cursorIndex {
 				fmt.Fprintf(&b, "-> ")
 			}
 			fmt.Fprintf(&b, "%s\n", option)
 		}
+
 		return b.String()
 	case g.Systemd:
 		return m.systemd.View()
@@ -137,7 +170,13 @@ func (m model) View() string {
 	return "Something went wrong!"
 }
 
+func alignRight(width int, str string) string {
+	return alignRightStyle.Width(width).Render(str)
+}
+
 func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc *scripts.ScriptController) model {
+	s := spinner.New()
+	s.Spinner = spinner.Line
 	return model{
 		options:     []string{"systemd", "scripts"},
 		cursorIndex: 0,
@@ -145,6 +184,7 @@ func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc
 		systemd:     systemd.New(dConn, watcher),
 		scripts:     scriptsTui.New(sc),
 		ipStr:       fmt.Sprintf("Serving web ui at http://%s:%s", ip, device.SERVER_PORT),
+		spinner:     s,
 	}
 }
 

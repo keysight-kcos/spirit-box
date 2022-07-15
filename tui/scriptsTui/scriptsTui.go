@@ -17,12 +17,12 @@ var alignRightStyle = lp.NewStyle().Align(lp.Right)
 var alignLeftStyle = lp.NewStyle().Align(lp.Left)
 
 type Model struct {
-	cursorIndex int
-	curScreen   g.Screen
-	sc          *scripts.ScriptController
-	AllReady    bool
-	openPgs     []bool
-	scriptCursors     []int
+	cursorIndex   int
+	curScreen     g.Screen
+	sc            *scripts.ScriptController
+	AllReady      bool
+	openPgs       []bool
+	scriptCursors []int
 }
 
 func New(sc *scripts.ScriptController) Model {
@@ -34,10 +34,10 @@ func New(sc *scripts.ScriptController) Model {
 		}
 	*/
 	return Model{
-		sc:       sc,
-		openPgs:  openPgs,
-		scriptCursors:  scriptCursors,
-		AllReady: false,
+		sc:            sc,
+		openPgs:       openPgs,
+		scriptCursors: scriptCursors,
+		AllReady:      false,
 	}
 }
 
@@ -57,14 +57,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 			return m, nil
 		case "right":
-			if m.openPgs[m.cursorIndex]{
+			if m.openPgs[m.cursorIndex] {
 				if m.scriptCursors[m.cursorIndex] < len(m.sc.PriorityGroups[m.cursorIndex].Specs)-1 {
 					m.scriptCursors[m.cursorIndex]++
 				}
 			}
 			return m, nil
 		case "left":
-			if m.openPgs[m.cursorIndex]{
+			if m.openPgs[m.cursorIndex] {
 				if m.scriptCursors[m.cursorIndex] > 0 {
 					m.scriptCursors[m.cursorIndex]--
 				}
@@ -153,7 +153,7 @@ func (m Model) View() string {
 			fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, left), alignRight(len(right)+2, right))
 			for j, spec := range pg.Specs {
 				cmdStr := spec.ToString()
-				if j == m.scriptCursors[m.cursorIndex] && (m.cursorIndex == i){
+				if j == m.scriptCursors[m.cursorIndex] && (m.cursorIndex == i) {
 					cmdStr = "-> " + cmdStr
 				}
 				numRuns := 0
@@ -182,6 +182,40 @@ func (m Model) View() string {
 	}
 
 	return b.String()
+}
+
+type ScriptStatus struct {
+	Cmd    string
+	Status int // 0: waiting 1: running 2: failed, 3: succeeded
+}
+
+// just get statuses of individual scripts for displaying in the top level.
+func (m Model) GetScriptStatuses() []ScriptStatus {
+	ret := make([]ScriptStatus, m.sc.NumScripts())
+
+	for _, pg := range m.sc.PriorityGroups {
+		for j, spec := range pg.Specs {
+			cmdStr := spec.ToString()
+			stat := 0
+
+			if pg.Trackers != nil {
+				tracker := pg.Trackers[j]
+				if tracker.Finished {
+					if tracker.Succeeded() {
+						stat = 3
+					} else {
+						stat = 2
+					}
+				} else {
+					stat = 1
+				}
+			}
+
+			ret = append(ret, ScriptStatus{Cmd: cmdStr, Status: stat})
+		}
+	}
+
+	return ret
 }
 
 func alignRight(width int, str string) string {
