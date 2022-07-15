@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -13,18 +14,17 @@ import (
 	"spirit-box/scripts"
 	"spirit-box/services"
 	"spirit-box/tui"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreos/go-systemd/v22/dbus"
 	"github.com/rs/cors"
 )
 
-const PORT = "8080"
-const CHANNEL_BUFFER = 100
-const SYSTEMD_UPDATE_INTERVAL = 500 // in milliseconds
-
-//go:embed frontend_build_files
+//go:embed webui/build
 var embeddedFiles embed.FS
+
+var HOST_IS_UP = false
 
 func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -48,8 +48,17 @@ func createQuitHandler(quit chan struct{}) func(http.ResponseWriter, *http.Reque
 	}
 }
 
+// so frontend knows if host machine's default web page is up
+func hostUpHandler(w http.ResponseWriter, r *http.Request) {
+	if HOST_IS_UP {
+		fmt.Fprintf(w, "up")
+	} else {
+		fmt.Fprintf(w, "not up")
+	}
+}
+
 func getFileSystem() http.FileSystem {
-	fsys, err := fs.Sub(embeddedFiles, "frontend_build_files")
+	fsys, err := fs.Sub(embeddedFiles, "webui/build")
 	if err != nil {
 		panic(err)
 	}
@@ -58,8 +67,36 @@ func getFileSystem() http.FileSystem {
 }
 
 func main() {
-	ip := device.GetIPv4Addr("eth0")
+	quitWeb := make(chan struct{})
+	quitTui := make(chan struct{})
+	rebootServer := make(chan struct{})
+
+	ip := device.GetIPv4Addr(device.NIC)
 	ip = ip[:len(ip)-3]
+
+	device.LoadNetworkConfig()
+
+	// apply iptables rules
+	err := device.SetPortForwarding()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		for {
+			res, _ := http.Get(fmt.Sprintf("http://localhost:%s", device.TEMP_PORT))
+			if res != nil { // Something's being served on port 80 (redirected to TEMP_PORT)
+				err := device.UnsetPortForwarding()
+				if err != nil {
+					log.Fatal(err)
+				}
+				HOST_IS_UP = true
+				rebootServer <- struct{}{}
+				break
+			}
+			time.Sleep(time.Second)
+		}
+	}()
 
 	dConn, err := dbus.New()
 	if err != nil {
@@ -71,23 +108,28 @@ func main() {
 	uw := services.NewWatcher(dConn)
 	sc := scripts.NewController()
 
-	quitWeb := make(chan struct{})
-	quitTui := make(chan struct{})
-
 	// setup endpoints for server
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(getFileSystem()))
 	mux.HandleFunc("/systemd", createSystemdHandler(uw))
 	mux.HandleFunc("/scripts", createScriptsHandler(sc))
 	mux.HandleFunc("/quit", createQuitHandler(quitWeb))
+	mux.HandleFunc("/host", hostUpHandler)
 
-	log.Printf("Starting server on port %s.", PORT)
+	log.Printf("Starting server on port %s.", device.SERVER_PORT)
 	handler := cors.Default().Handler(mux)
 
-	go func() { // start server
-		err := http.ListenAndServe(fmt.Sprintf(":%s", PORT), handler)
-		if err != nil {
-			log.Fatal("ListenAndServe:" + err.Error())
+	go func() { // start server, reboot if reboot message is sent
+		for {
+			s := http.Server{Addr: fmt.Sprintf(":%s", device.SERVER_PORT), Handler: handler}
+			go func() {
+				time.Sleep(time.Duration(500) * time.Millisecond)
+				<-rebootServer
+				s.Shutdown(context.Background())
+			}()
+			if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatal("ListenAndServe:" + err.Error())
+			}
 		}
 	}()
 
@@ -126,9 +168,10 @@ func main() {
 	}
 
 	log.Print("Cleanup.")
+	device.UnsetPortForwarding() // No problems if rules were already unset.
 
 	// Dump log lines to stdout for dev purposes.
-	fmt.Printf("\nLog Lines (%d):\n", logging.Logs.Length())
+	fmt.Printf("\nLog Lines (in order of insertion):\n")
 	for _, event := range logging.Logs.Events {
 		fmt.Println(event.LogLine())
 	}

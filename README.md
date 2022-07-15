@@ -1,4 +1,65 @@
 # spirit-box
+insert logo here
+
+## Intro
+For machines with long boot processes, it is impossible to know exactly what the system is doing. Spirit-box is the solution. Spirit-box is a data-driven web and terminal UI for Linux systems. It provides real-time updates for visibility into the system during early stages of boot. Currently, it is possible to get live updates on systemd units. Users are also able to use their own scripts to give more precise insight into the processes that are being started. All of this is data-driven and configurable by the user.
+
+## Systemd Units
+Users can define what units they would like to monitor in the whitelist file. Each service is seperated by a newline. The format is:
+
+    service:substate
+
+For example,
+
+    NetworkManager.service:running
+
+will have spirit-box monitor the network manager service.
+
+## Scripts
+Users can specify scripts for spirit-box to run on boot. These scripts are typically used to monitor boot-up processes in greater detail than systemd can provide. However, they do not have to be monitor scripts. The list of scripts are defined in script_specs.json. The file is an array of objects. The format of each script is:
+
+"cmd": "<path to script\>",
+
+"args": ["<argument 1\>", "<argument 2\>" ...],
+
+"priority": <priority level\>,
+
+"retryTimeout": <time between retries of the script\>,
+
+"totalWaitTime": <time until considering the script a failure\>
+
+Scripts can be sorted by priority. All scripts in a lower priority group must either complete successfully or time out before spirit-box begins to execute scripts of the next higher priority group. This allows scripts to be run after their dependancies have been successfully finished. Scripts with the same priority run concurrently.
+
+retryTimeout is the amount of time (in milliseconds) spirit-box will wait before attempting to rerun the script. Spirit-box will only attempt to rerun scripts if they time out from this timer, or if they return as unsuccessful. Unsuccessful returns are defined in the script by the user.
+
+totalWaitTime is the amount of time (in milliseconds) spirit-box will wait for a script to return successfully before declaring the script as a failure. Spirit-box will stop rerunning this script. This time includes all the reruns of a script.
+
+## Logging
+
+## UI
+
+## Tutorial
+
+
+## 07/14
+Here are our current todos listed in approximate order of importance:
+
+- [ ] Graceful handoff between spirit-box web UI and host machine's web UI.
+- [ ] Build a demo environment that demonstrates how this tool can be used in the wild, use KCOS usecases as a base
+- [ ] Run the program on different types of devices
+- [ ] Documentation to make it easy for anyone to jump into the project and add things
+- [ ] Documentation for how the program is used
+- [ ] Streamlined installations onto host machines with minimal tinkering
+- [ ] Productization -> Make it easy for others to decide if they have a need for this tool
+- [ ] Option for a sequential view of all checks
+- [ ] Option to disable the ability to add more systemd units during runtime
+- [ ] Interactivity with script execution
+- [ ] Log visualization -> timeline, graphs, etc.
+- [ ] Combine config files into a single file if that would provide any benefit
+- [ ] Possible use of eBPF
+- [ ] Performance and memory profiling
+- [x] Timestamps and PID for each individual script run -> this is now included in logs
+- [x] Exact times for systemd timestamps rather than observed times. The extra precision would be great but the method for getting exact timestamps needs to be explored.
 
 ## 07/12
 Presented progress demo today. Here are our current todos:

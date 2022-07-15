@@ -4,7 +4,7 @@ import "./App.css";
 const TrackerInfo = ({ tracker, close }) => {
 
 	return (
-		<div className="bg-blue-300 pl-4 pt-5 pb-10 h-screen">
+		<div className="bg-blue-300 pl-4 pt-5 pb-10 mb-0 h-full overflow-y-scroll">
 		<button className="font-bold bg-gray-300 p-2 rounded hover:bg-gray-400 shadow-xl block mb-5" onClick={
 			(e) => {
 				close();
@@ -33,9 +33,10 @@ const TrackerInfo = ({ tracker, close }) => {
 				<td>
 				{run.info}
 				</td>
-				<td>
-					{run.success ? "True" : "False"}
-				</td>
+				{run.success 
+					? <td className="readyNoHover">True</td>
+					: <td className="notReadyNoHover">False</td>
+				}
 				</tr>
 			))}
 		</tbody>

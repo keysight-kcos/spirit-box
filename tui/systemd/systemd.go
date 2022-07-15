@@ -22,7 +22,7 @@ var alignRightStyle = lp.NewStyle().Align(lp.Right)
 var alignLeftStyle = lp.NewStyle().Align(lp.Left)
 
 type Model struct {
-	watcher           *services.UnitWatcher
+	Watcher           *services.UnitWatcher
 	unitInfo          unitInfo
 	curScreen         g.Screen
 	cursorIndex       int
@@ -40,13 +40,13 @@ type Model struct {
 	height              int
 }
 
-func New(dConn *dbus.Conn, watcher *services.UnitWatcher) Model {
+func New(dConn *dbus.Conn, Watcher *services.UnitWatcher) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Line
 	t := textinput.New()
 	t.Placeholder = "Press \"/\" to add more units to watch"
 	return Model{
-		watcher:     watcher,
+		Watcher:     Watcher,
 		curScreen:   g.Systemd,
 		cursorIndex: 0,
 		spinner:     s,
@@ -85,7 +85,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			} else {
 				switch msg.String() {
 				case "j":
-					if m.cursorIndex < len(m.watcher.Units)-1 {
+					if m.cursorIndex < len(m.Watcher.Units)-1 {
 						m.cursorIndex++
 					}
 				case "k":
@@ -93,7 +93,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 						m.cursorIndex--
 					}
 				case "enter":
-					m.unitInfo = InitUnitInfo(m.watcher.Units[m.cursorIndex].Properties, m.width, m.height)
+					m.unitInfo = InitUnitInfo(m.Watcher.Units[m.cursorIndex].Properties, m.width, m.height)
 					cmd := func() tea.Msg { return g.SwitchScreenMsg(g.UnitInfoScreen) }
 					cmds = append(cmds, cmd)
 				case "/":
@@ -117,10 +117,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case g.CheckSystemdMsg:
 		if m.addUnitBeforeUpdate {
-			m.watcher.AddUnit(m.newUnitName)
+			m.Watcher.AddUnit(m.newUnitName)
 			m.addUnitBeforeUpdate = false
 		}
-		m.AllReady = m.watcher.UpdateAll()
+		m.AllReady = m.Watcher.UpdateAll()
 
 		//log.Printf("From systemd, SystemddUpdateMsg")
 		return m, nil
@@ -148,13 +148,13 @@ func (m Model) View() string {
 			info = notReadyStyle.Render(m.spinner.View())
 		}
 		fmt.Fprintf(&b, "Watching %d services (%.0fs): %s\n\n",
-			m.watcher.NumUnits(),
-			m.watcher.Elapsed().Seconds(),
+			m.Watcher.NumUnits(),
+			m.Watcher.Elapsed().Seconds(),
 			info,
 		)
 
 		var readyStatus string
-		for i, u := range m.watcher.Units {
+		for i, u := range m.Watcher.Units {
 			if u.SubStateDesired == "watch" {
 				readyStatus = readyStyle.Render("WATCHING")
 			} else if u.Ready {

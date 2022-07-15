@@ -46,7 +46,7 @@ func NewLogEvent(desc string, obj LogObject) *LogEvent {
 }
 
 func (le *LogEvent) LogLine() string {
-	return fmt.Sprintf("%s: %s", FormatTimeNano(le.StartTime), le.Obj.LogLine())
+	return fmt.Sprintf("%s: %s", FormatTimeNano(le.EndTime), le.Obj.LogLine())
 }
 
 func (l *LogEvents) Length() int {

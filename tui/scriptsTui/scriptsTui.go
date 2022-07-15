@@ -17,24 +17,27 @@ var alignRightStyle = lp.NewStyle().Align(lp.Right)
 var alignLeftStyle = lp.NewStyle().Align(lp.Left)
 
 type Model struct {
-	cursorIndex int
-	curScreen   g.Screen
-	sc          *scripts.ScriptController
-	AllReady    bool
-	openPgs     []bool
+	cursorIndex   int
+	curScreen     g.Screen
+	sc            *scripts.ScriptController
+	AllReady      bool
+	openPgs       []bool
+	scriptCursors []int
 }
 
 func New(sc *scripts.ScriptController) Model {
-	temp := make([]bool, len(sc.PriorityGroups))
+	openPgs := make([]bool, len(sc.PriorityGroups))
+	scriptCursors := make([]int, len(sc.PriorityGroups))
 	/*
 		for i, _ := range temp {
 			temp[i] = true
 		}
 	*/
 	return Model{
-		sc:       sc,
-		openPgs:  temp,
-		AllReady: false,
+		sc:            sc,
+		openPgs:       openPgs,
+		scriptCursors: scriptCursors,
+		AllReady:      false,
 	}
 }
 
@@ -51,6 +54,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case "k", "up":
 			if m.cursorIndex > 0 {
 				m.cursorIndex--
+			}
+			return m, nil
+		case "right":
+			if m.openPgs[m.cursorIndex] {
+				if m.scriptCursors[m.cursorIndex] < len(m.sc.PriorityGroups[m.cursorIndex].Specs)-1 {
+					m.scriptCursors[m.cursorIndex]++
+				}
+			}
+			return m, nil
+		case "left":
+			if m.openPgs[m.cursorIndex] {
+				if m.scriptCursors[m.cursorIndex] > 0 {
+					m.scriptCursors[m.cursorIndex]--
+				}
 			}
 			return m, nil
 		case "enter":
@@ -126,26 +143,79 @@ func (m Model) View() string {
 
 		if m.openPgs[i] {
 			fmt.Fprintf(&b, "\n")
+			left := fmt.Sprintf("Command")
+			right := fmt.Sprintf("%s  %s  %s  %s",
+				alignRight(len("# Runs"), "# Runs"),
+				alignRight(len("Retry Timeout"), "Retry Timeout"),
+				alignRight(len("Total Timeout"), "Total Timeout"),
+				alignRight(len("Result"), "Result"),
+			)
+			fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd, left), alignRight(len(right)+2, right))
 			for j, spec := range pg.Specs {
 				cmdStr := spec.ToString()
+				if j == m.scriptCursors[m.cursorIndex] && (m.cursorIndex == i) {
+					cmdStr = "-> " + cmdStr
+				}
+				numRuns := 0
 				readyStatus = notReadyStyle.Render("Awaiting execution.")
 				if pg.Trackers != nil {
 					tracker := pg.Trackers[j]
+					numRuns = len(tracker.Runs)
 					if !tracker.Finished {
 						readyStatus = notReadyStyle.Render("Running...")
 					} else if tracker.Succeeded() {
 						readyStatus = readyStyle.Render("Succeeded")
 					} else {
-						readyStatus = notReadyStyle.Render("Failed")
+						readyStatus = notReadyStyle.Render("Failed   ")
 					}
 				}
-				fmt.Fprintf(&b, "\t        %s %s\n", alignLeft(longestCmd, cmdStr), alignRight(20, readyStatus))
+				right := fmt.Sprintf("%s   %s   %s   %s",
+					alignRight(len("# Runs"), fmt.Sprintf("%d", numRuns)),
+					alignRight(len("Retry Timeout"), fmt.Sprintf("%d", spec.RetryTimeout)),
+					alignRight(len("Total Timeout"), fmt.Sprintf("%d", spec.TotalWaitTime)),
+					alignRight(0, readyStatus),
+				)
+				fmt.Fprintf(&b, "\t  %s %s\n", alignLeft(longestCmd+len("-> "), cmdStr), right)
 			}
 			fmt.Fprintf(&b, "\n")
 		}
 	}
 
 	return b.String()
+}
+
+type ScriptStatus struct {
+	Cmd    string
+	Status int // 0: waiting 1: running 2: failed, 3: succeeded
+}
+
+// just get statuses of individual scripts for displaying in the top level.
+func (m Model) GetScriptStatuses() []ScriptStatus {
+	ret := make([]ScriptStatus, m.sc.NumScripts())
+
+	for _, pg := range m.sc.PriorityGroups {
+		for j, spec := range pg.Specs {
+			cmdStr := spec.ToString()
+			stat := 0
+
+			if pg.Trackers != nil {
+				tracker := pg.Trackers[j]
+				if tracker.Finished {
+					if tracker.Succeeded() {
+						stat = 3
+					} else {
+						stat = 2
+					}
+				} else {
+					stat = 1
+				}
+			}
+
+			ret = append(ret, ScriptStatus{Cmd: cmdStr, Status: stat})
+		}
+	}
+
+	return ret
 }
 
 func alignRight(width int, str string) string {

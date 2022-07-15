@@ -17,12 +17,13 @@ import (
 
 const whitelistPath = "/usr/share/spirit-box/whitelist"
 
+var SYSTEMD_START_TIME time.Time
+
 type UnitWatcher struct {
-	Units          []*UnitInfo
-	DConn          *dbus.Conn
-	updateChannels []chan interface{}
-	started        time.Time
-	mu             sync.Mutex
+	Units   []*UnitInfo
+	DConn   *dbus.Conn
+	started time.Time
+	mu      sync.Mutex
 }
 
 func (uw *UnitWatcher) Start(interval int) {
@@ -45,18 +46,9 @@ func (uw *UnitWatcher) UpdateAll() bool {
 		}
 
 		// type assertions
-		s1, ok := properties["LoadState"].(string)
-		if !ok {
-			log.Fatal(errors.New("Type assertion failed: properties[\"LoadState\"] is not a string."))
-		}
-		s2, ok := properties["ActiveState"].(string)
-		if !ok {
-			log.Fatal(errors.New("Type assertion failed: properties[\"ActiveState\"] is not a string."))
-		}
-		s3, ok := properties["SubState"].(string)
-		if !ok {
-			log.Fatal(errors.New("Type assertion failed: properties[\"SubState\"] is not a string."))
-		}
+		s1 := assertString(properties["LoadState"])
+		s2 := assertString(properties["ActiveState"])
+		s3 := assertString(properties["SubState"])
 
 		u.update([3]string{s1, s2, s3}, properties)
 		allReady = allReady && u.Ready
@@ -76,41 +68,32 @@ func (uw *UnitWatcher) InitializeStates() bool {
 	return allReady
 }
 
-func (uw *UnitWatcher) InitializeState(u *UnitInfo) {
+func (uw *UnitWatcher) InitializeState(u *UnitInfo) error {
 	properties, err := uw.DConn.GetUnitProperties(u.Name)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// type assertions
-	s1, ok := properties["LoadState"].(string)
-	if !ok {
-		log.Fatal(errors.New("Type assertion failed: properties[\"LoadState\"] is not a string."))
-	}
-	s2, ok := properties["ActiveState"].(string)
-	if !ok {
-		log.Fatal(errors.New("Type assertion failed: properties[\"ActiveState\"] is not a string."))
-	}
-	s3, ok := properties["SubState"].(string)
-	if !ok {
-		log.Fatal(errors.New("Type assertion failed: properties[\"SubState\"] is not a string."))
-	}
-	s4, ok := properties["Description"].(string)
-	if !ok {
-		log.Fatal(errors.New("Type assertion failed: properties[\"Description\"] is not a string."))
-	}
+	s1 := assertString(properties["LoadState"])
+	s2 := assertString(properties["ActiveState"])
+	s3 := assertString(properties["SubState"])
+	s4 := assertString(properties["Description"])
 	u.Description = s4
 
 	u.update([3]string{s1, s2, s3}, properties)
+	return nil
 }
 
 func (uw *UnitWatcher) AddUnit(name string) {
 	uw.mu.Lock()
 	defer uw.mu.Unlock()
-	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, time.Now(), uw}
-	uw.InitializeState(newUnit)
+	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, SYSTEMD_START_TIME, uw}
+	err := uw.InitializeState(newUnit)
+	if err != nil {
+		return // no feedback on failure
+	}
 	uw.Units = append(uw.Units, newUnit)
-	// Change logic for initialization?
 }
 
 func (uw *UnitWatcher) AllReadyStatus() string {
@@ -138,19 +121,15 @@ func (uw *UnitWatcher) NumUnits() int {
 	return len(uw.Units)
 }
 
-func (uw *UnitWatcher) AttachChannel(c chan interface{}) {
-	uw.mu.Lock()
-	defer uw.mu.Unlock()
-	uw.updateChannels = append(uw.updateChannels, c)
-}
-
 func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 	newUW := &UnitWatcher{
-		DConn:          dConn,
-		updateChannels: make([]chan interface{}, 0, 5),
-		started:        time.Now(),
+		DConn:   dConn,
+		started: time.Now(),
 	}
-	newUW.Units = LoadWhitelist(whitelistPath, newUW)
+
+	setSystemdStartTime(dConn)
+
+	newUW.Units = LoadWhitelist(whitelistPath, newUW, SYSTEMD_START_TIME)
 
 	return newUW
 }
@@ -195,21 +174,27 @@ func (u *UnitInfo) update(updates [3]string, properties map[string]interface{}) 
 
 	if changed {
 		obj := u.GetStateChange(from1, from2, from3, from4)
-		now := time.Now()
+		timeChanged := getTimeOfStateChange(updates[1], properties)
+		/*
+			// for debugging
+			if strings.Contains(fmt.Sprintf("%v", timeChanged), "69") {
+				for k, v := range properties {
+					if strings.Contains(k, "ime") {
+						log.Printf("%s: %v", k, v)
+					}
+				}
+			}
+		*/
 
-		go func(obj *UnitStateChange, now, at time.Time, unitName string) {
+		go func(obj *UnitStateChange, timeChanged, at time.Time, unitName string) {
 			le := logging.NewLogEvent(fmt.Sprintf("%s state change.", unitName), obj)
-			le.EndTime = now
+			le.EndTime = timeChanged
 			le.StartTime = at
 			logging.Logs.AddLogEvent(le)
-		}(obj, now, u.At, u.Name)
+		}(obj, timeChanged, u.At, u.Name)
 
-		u.At = now
+		u.At = timeChanged
 		u.Properties = properties
-
-		for _, c := range u.uw.updateChannels {
-			c <- *u
-		}
 	}
 
 	return changed
@@ -242,10 +227,10 @@ func (u *UnitStateChange) LogLine() string {
 }
 
 func (u *UnitStateChange) GetObjType() string {
-	return "SystemD Unit state change."
+	return "SystemD unit state change"
 }
 
-func LoadWhitelist(filename string, uw *UnitWatcher) []*UnitInfo {
+func LoadWhitelist(filename string, uw *UnitWatcher, startTime time.Time) []*UnitInfo {
 	units := make([]*UnitInfo, 0)
 	file, err := os.Open(filename)
 	if err != nil {
@@ -261,7 +246,80 @@ func LoadWhitelist(filename string, uw *UnitWatcher) []*UnitInfo {
 			log.Fatal(errors.New("Line in whitelist did not match <unit name>:<substate> format."))
 		}
 
-		units = append(units, &UnitInfo{split[0], split[1], false, "", "", "", "", nil, time.Now(), uw})
+		/*
+		 Accurate start time (time when systemd starts) when running from boot.
+		 If not running from boot, journalctl should be used
+		 to get timestamps of all intermediate state changes.
+		*/
+		units = append(units, &UnitInfo{split[0], split[1], false, "", "", "", "", nil, startTime, uw})
 	}
 	return units
+}
+
+func assertString(obj interface{}) string {
+	s, ok := obj.(string)
+	if !ok {
+		log.Fatal(errors.New(fmt.Sprintf("Type assertion failed: %v is a %T.", obj, obj)))
+	}
+	return s
+}
+
+func assertUint64(obj interface{}) uint64 {
+	i, ok := obj.(uint64)
+	if !ok {
+		log.Fatal(errors.New(fmt.Sprintf("Type assertion failed: %v is a %T.", obj, obj)))
+	}
+	return i
+}
+
+func convertRealtime(val uint64) (int64, int64) { // may have to account for different levels of clock precision across machines
+	var div uint64 = 1e6
+
+	sec, nsec := int64(val/div), int64((val%div)*1000) // systemd timestamps are microsecond precision
+	//log.Printf("sec: %d nsec: %d", sec, nsec)
+	return sec, nsec
+}
+
+func getTimeOfStateChange(activeState string, properties map[string]interface{}) time.Time {
+	var key string
+	switch activeState {
+	case "inactive", "failed":
+		key = "InactiveEnterTimestamp"
+	case "activating":
+		key = "InactiveExitTimestamp"
+	case "active":
+		key = "ActiveEnterTimestamp"
+	case "deactivating":
+		key = "ActiveExitTimestamp"
+	default:
+		log.Fatalf("%s is an unrecognized active state.", activeState)
+	}
+
+	realTime := assertUint64(properties[key])
+
+	if realTime == 0 { // state is the same as it was when it started.
+		return SYSTEMD_START_TIME
+	}
+	sec, nsec := convertRealtime(realTime)
+	return time.Unix(sec, nsec)
+}
+
+func setSystemdStartTime(dConn *dbus.Conn) {
+	props, err := dConn.GetAllProperties("-.slice")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	realTime := assertUint64(props["ActiveEnterTimestamp"])
+	sec, nsec := convertRealtime(realTime)
+	SYSTEMD_START_TIME = time.Unix(sec, nsec)
+
+	// log when systemd was started
+	msg := "SystemD was started."
+	msgLog := logging.NewLogEvent(msg, &logging.MessageLog{msg})
+
+	msgLog.StartTime = SYSTEMD_START_TIME
+	msgLog.EndTime = SYSTEMD_START_TIME
+
+	logging.Logs.AddLogEvent(msgLog)
 }

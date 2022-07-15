@@ -2,11 +2,21 @@
 package device
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/exec"
 	"strings"
 )
+
+const NETWORK_CONFIG_PATH = "/usr/share/spirit-box/network.json"
+
+var SERVER_PORT = "8080" // spirit-box server port
+var HOST_PORT = "80"     // port that host machine's default server uses
+var TEMP_PORT = "8081"   // port to use redirect HOST_PORT to while waiting for that server to come up
+var NIC = "eth0"         // nic to set iptables rules for
 
 func PrintInterfaces() {
 	interfaces, err := net.Interfaces()
@@ -65,4 +75,68 @@ func GetIPv4Addr(interfaceName string) string {
 
 func isIPv4(address string) bool {
 	return strings.Count(address, ":") < 2
+}
+
+func SetRules(addFlag, nic, from, to string) error {
+	// -A or -D for addFlag
+	args := strings.Split(
+		fmt.Sprintf("-t nat %s PREROUTING -i %s -p tcp --dport %s -j REDIRECT --to %s", addFlag, nic, from, to), " ")
+	cmd := exec.Command("iptables", args...)
+	bytes, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("First: %w: %s, %v, %d", err, string(bytes), args, len(args))
+	}
+
+	args = strings.Split(
+		fmt.Sprintf("-t nat %s OUTPUT -p tcp --dport %s -j REDIRECT --to %s", addFlag, from, to), " ")
+	cmd = exec.Command("iptables", args...)
+	bytes, err = cmd.Output()
+	if err != nil {
+		return fmt.Errorf("Second: %w: %s, %v, %d", err, string(bytes), args, len(args))
+	}
+
+	return nil
+}
+
+func SetPortForwarding() error {
+	err := SetRules("-A", NIC, HOST_PORT, SERVER_PORT)
+	if err != nil {
+		return err
+	}
+	return SetRules("-A", NIC, TEMP_PORT, HOST_PORT)
+}
+
+func UnsetPortForwarding() error {
+	err := SetRules("-D", NIC, HOST_PORT, SERVER_PORT)
+	if err != nil {
+		return err
+	}
+	return SetRules("-D", NIC, TEMP_PORT, HOST_PORT)
+}
+
+// Just loading one each for now
+func LoadNetworkConfig() {
+	type ParseObj struct {
+		ServerPort string `json:"serverPort"`
+		HostPort   string `json:"hostPort"`
+		TempPort   string `json:"tempPort"`
+		Nic        string `json:"nic"`
+	}
+
+	temp := ParseObj{}
+
+	bytes, err := os.ReadFile(NETWORK_CONFIG_PATH)
+	if err != nil { // just use defaults on error
+		return
+	}
+
+	err = json.Unmarshal(bytes, &temp)
+	if err != nil { // just use defaults on error
+		return
+	}
+
+	SERVER_PORT = temp.ServerPort
+	HOST_PORT = temp.HostPort
+	TEMP_PORT = temp.TempPort
+	NIC = temp.Nic
 }

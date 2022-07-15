@@ -26,7 +26,10 @@ type ScriptSpec struct {
 }
 
 func (s *ScriptSpec) Run() ScriptResult {
-	bytes, err := exec.Command(s.Cmd, s.Args...).Output()
+	cmd := exec.Command(s.Cmd, s.Args...)
+	start := time.Now()
+	bytes, err := cmd.Output()
+	elapsed := time.Since(start)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,6 +39,9 @@ func (s *ScriptSpec) Run() ScriptResult {
 	if err != nil {
 		log.Fatal(err)
 	}
+	res.Pid = cmd.Process.Pid
+	res.StartTime = start
+	res.ElapsedTime = elapsed
 
 	return res
 }
@@ -45,8 +51,11 @@ func (s *ScriptSpec) ToString() string {
 }
 
 type ScriptResult struct {
-	Success bool   `json:"success"`
-	Info    string `json:"info"` // More detailed information the script may want to return.
+	Success     bool          `json:"success"`
+	Info        string        `json:"info"` // More detailed information the script may want to return.
+	Pid         int           `json:"pid"`
+	StartTime   time.Time     `json:"startTime"`
+	ElapsedTime time.Duration `json:"elaspedTime[ns]"`
 }
 
 type ScriptTracker struct {
@@ -238,6 +247,14 @@ func (sc *ScriptController) PrintPriorityGroups() { // for debugging
 			fmt.Println(*s)
 		}
 	}
+}
+
+func (sc *ScriptController) NumScripts() int {
+	num := 0
+	for _, pg := range sc.PriorityGroups {
+		num += len(pg.Specs)
+	}
+	return num
 }
 
 func NewController() *ScriptController {
