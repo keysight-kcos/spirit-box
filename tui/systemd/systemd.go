@@ -62,10 +62,10 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	cmds := make([]tea.Cmd, 0)
+	m.spinner, cmd = m.spinner.Update(msg)
+	cmds = append(cmds, cmd)
 	switch m.curScreen {
 	case g.Systemd:
-		m.spinner, cmd = m.spinner.Update(msg)
-		cmds = append(cmds, cmd)
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			if m.textinputSelected {
@@ -84,11 +84,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			} else {
 				switch msg.String() {
-				case "j":
+				case "j", "down":
 					if m.cursorIndex < len(m.Watcher.Units)-1 {
 						m.cursorIndex++
 					}
-				case "k":
+				case "k", "up":
 					if m.cursorIndex > 0 {
 						m.cursorIndex--
 					}
