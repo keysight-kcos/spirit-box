@@ -57,19 +57,29 @@ There are multiple objectTypes that represent different sorts of events.
 
 ## Terminal User Interface
 
-The spirit-box terminal user interface is displayed on boot. The main screen displays the status of all systemd units as well as all scripts. It displays a url to the webpage hosting the graphical user interface. The main screen has live updates whenever a new event is observed by spirit-box. The user is able to select whether they would like to view the systemd screen or the scripts screen.
+The spirit-box terminal user interface is displayed on boot. The main screen displays the status of all systemd units as well as all scripts. It displays an IP and port to the webpage hosting the graphical user interface. The main screen has live updates whenever a new event is observed by spirit-box. The user is able to select whether they would like to view the systemd screen or the scripts screen.
 
-The systemd screen has an overview of all whitelisted services. It displays their substates and ready status. The user is able to add services to watch during run time.
+The systemd screen has an overview of all whitelisted services. It displays their substates and ready status. The user is able to add services to watch at run time. A list of properties and their values are accessible when the user selects the service.
 
 ![Screenshot 2022-07-15 153240](https://user-images.githubusercontent.com/56091505/179320455-3766f4fc-3fbf-487b-9ab0-58fc4257a4e8.png)
 
-The scripts screen has an overview of all scripts specified in the configuration files. Scripts are organized by priority group. 
+The scripts screen has an overview of all scripts specified in the configuration files. Scripts are organized by priority group. Selecting a priority group allows the user to view information about the scripts within that group.
+
+![Screenshot 2022-07-18 154508](https://user-images.githubusercontent.com/56091505/179629671-bdba3352-9e1c-4ff6-bc90-871bbaa200f7.png)
 
 ## Graphical User Interface
 
+Spirit-box's web page can be seen on localhost both port 80 and port 8080. Once spirit-box exits, port 80 will be open to any other services that uses it automatically. Reload the page to see what's being served on port 80. The web UI updates the progress of systemd services and scripts automatically. Shutting down spirit-box from the web UI will exit the terminal UI.
+
+![Screenshot 2022-07-18 161909](https://user-images.githubusercontent.com/56091505/179632771-941def88-4ffe-4be2-86fd-11853c777368.png)
+
+The scripts tab has an overview of all scripts specified in the configuration files. Scripts are organized by priority group. The user is able to view information about the scripts within that group. Selecting a script shows information about each run.
+
+The systemd tab has an overview of all whitelisted services. It displays their substates and ready status. A list of properties and their values are accessible when the user selects the service.
+
 ## Tutorial
 
-## 07/15
+## 07/18
 Here are our current todos listed in approximate order of importance:
 
 - [ ] Build a demo environment that demonstrates how this tool can be used in the wild, use KCOS usecases as a base
