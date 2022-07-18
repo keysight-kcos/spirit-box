@@ -7,13 +7,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"spirit-box/config"
 	"spirit-box/logging"
 	"strings"
 	"sync"
 	"time"
 )
-
-const SCRIPT_SPEC_PATH = "/usr/share/spirit-box/script_specs.json"
 
 // Loaded from a json file.
 // Specifications for how to run a script.
@@ -310,11 +309,11 @@ func LoadScriptSpecs() []ScriptSpec {
 
 	temp := ParseObj{}
 	specs := make([]ScriptSpec, 0)
-	if _, err := os.Stat(SCRIPT_SPEC_PATH); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(config.SCRIPT_SPEC_PATH); errors.Is(err, os.ErrNotExist) {
 		return specs
 	}
 
-	bytes, err := os.ReadFile(SCRIPT_SPEC_PATH)
+	bytes, err := os.ReadFile(config.SCRIPT_SPEC_PATH)
 	if err != nil {
 		log.Fatal(err)
 	}

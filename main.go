@@ -4,11 +4,13 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"spirit-box/config"
 	"spirit-box/device"
 	"spirit-box/logging"
 	"spirit-box/scripts"
@@ -25,6 +27,14 @@ import (
 var embeddedFiles embed.FS
 
 var HOST_IS_UP = false
+
+func init() {
+	const (
+		defaultPath = "/etc/spirit-box/"
+		usage       = "Path to the directory where spirit-box stores config files and logs."
+	)
+	flag.StringVar(&config.SPIRIT_PATH, "p", defaultPath, usage)
+}
 
 func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -71,10 +81,13 @@ func main() {
 	quitTui := make(chan struct{})
 	rebootServer := make(chan struct{})
 
-	ip := device.GetIPv4Addr(device.NIC)
-	ip = ip[:len(ip)-3]
+	flag.Parse()
+	config.InitPaths()
 
 	device.LoadNetworkConfig()
+
+	ip := device.GetIPv4Addr(device.NIC)
+	ip = ip[:len(ip)-3]
 
 	// apply iptables rules
 	err := device.SetPortForwarding()

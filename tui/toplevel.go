@@ -183,7 +183,7 @@ func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc
 		curScreen:   g.TopLevel,
 		systemd:     systemd.New(dConn, watcher),
 		scripts:     scriptsTui.New(sc),
-		ipStr:       fmt.Sprintf("Serving web ui at http://%s:%s", ip, device.SERVER_PORT),
+		ipStr:       fmt.Sprintf("Web UI at %s, ports %s, %s", ip, device.HOST_PORT, device.SERVER_PORT),
 		spinner:     s,
 	}
 }

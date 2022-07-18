@@ -8,10 +8,9 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"spirit-box/config"
 	"strings"
 )
-
-const NETWORK_CONFIG_PATH = "/usr/share/spirit-box/network.json"
 
 var SERVER_PORT = "8080" // spirit-box server port
 var HOST_PORT = "80"     // port that host machine's default server uses
@@ -125,7 +124,7 @@ func LoadNetworkConfig() {
 
 	temp := ParseObj{}
 
-	bytes, err := os.ReadFile(NETWORK_CONFIG_PATH)
+	bytes, err := os.ReadFile(config.NETWORK_CONFIG_PATH)
 	if err != nil { // just use defaults on error
 		return
 	}
