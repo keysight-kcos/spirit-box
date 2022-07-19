@@ -30,10 +30,14 @@ var HOST_IS_UP = false
 
 func init() {
 	const (
-		defaultPath = "/etc/spirit-box/"
-		usage       = "Path to the directory where spirit-box stores config files and logs."
+		defaultPath      = "/etc/spirit-box/"
+		pathUsage        = "Path to the directory where spirit-box stores config files and logs."
+		defaultDebugFile = "/dev/null"
+		debugUsage       = "Write debugging logs to a file."
 	)
-	flag.StringVar(&config.SPIRIT_PATH, "p", defaultPath, usage)
+
+	flag.StringVar(&config.SPIRIT_PATH, "p", defaultPath, pathUsage)
+	flag.StringVar(&config.DEBUG_FILE, "d", defaultDebugFile, debugUsage)
 }
 
 func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *http.Request) {
@@ -148,7 +152,7 @@ func main() {
 
 	// Writes default log messages (log.Print, log.Fatal, etc...)
 	// to a file called tuiDebug.
-	f, err := tea.LogToFile("tuiDebug", "debug")
+	f, err := tea.LogToFile(config.DEBUG_FILE, "debug")
 	if err != nil {
 		log.Fatal(err)
 	}

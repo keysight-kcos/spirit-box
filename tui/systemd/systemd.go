@@ -129,6 +129,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		log.Printf("From systemd, SwitchScreenMsg: %s", m.curScreen.String())
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		if m.width == 0 {
+			m.width = 150
+		}
+		if m.height == 0 {
+			m.height = 70
+		}
+		log.Printf("width: %d, height: %d", m.width, m.height)
 	}
 
 	m.textinput, cmd = m.textinput.Update(msg)

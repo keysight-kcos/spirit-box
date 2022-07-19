@@ -2,6 +2,7 @@ package config
 
 // Path for directory that stores config files and logs.
 var SPIRIT_PATH string // defaults to /etc/spirit-box/
+var DEBUG_FILE string  // defaults to /dev/null
 
 var NETWORK_CONFIG_PATH = "network.json"
 var SCRIPT_SPEC_PATH = "script_specs.json"
