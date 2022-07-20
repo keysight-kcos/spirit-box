@@ -184,6 +184,7 @@ func main() {
 
 	log.Print("Cleanup.")
 	device.UnsetPortForwarding() // No problems if rules were already unset.
+	fmt.Printf("\033[2J")        // clear the screen
 
 	// Dump log lines to stdout for dev purposes.
 	fmt.Printf("\nLog Lines (in order of insertion):\n")
