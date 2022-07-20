@@ -79,7 +79,30 @@ The systemd tab has an overview of all whitelisted services. It displays their s
 
 ## Tutorial
 
-## 07/18
+### Ubuntu/Debian Install
+1. download the DEB package
+
+`wget -c https://github.com/keysight-kcos/data-driven-boot-up-ui/releases/download/v1.0.0-alpha/spirit-box_1.0.0_arm64.deb`
+
+2. unpack
+
+`dpkg -i spirit-box_...arm64.deb`
+
+3. reboot
+
+
+### Fedora/RHEL Install
+1. download the RPM package
+
+`wget -c https://github.com/keysight-kcos/data-driven-boot-up-ui/releases/download/v1.0.0-alpha/spirit-box-1.0.0-2.x86_64.rpm`
+
+2. unpack
+
+`rpm -ivh spirit-box-...x86_64.rpm`
+
+3. reboot
+
+## 07/20
 Here are our current todos listed in approximate order of importance:
 
 - [ ] Build a demo environment that demonstrates how this tool can be used in the wild, use KCOS usecases as a base
