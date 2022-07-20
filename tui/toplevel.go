@@ -31,6 +31,7 @@ type model struct {
 	scripts     scriptsTui.Model
 	ipStr       string
 	spinner     spinner.Model
+	clearScreen bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -42,6 +43,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	m.spinner, cmd = m.spinner.Update(msg)
 	cmds = append(cmds, cmd)
+	m.clearScreen = false
 
 	switch m.curScreen {
 	case g.TopLevel:
@@ -81,6 +83,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case g.WipeScreenMsg:
+		m.clearScreen = true
+		return m, tea.Batch(cmds...)
 	case g.SwitchScreenMsg:
 		m.curScreen = g.Screen(msg)
 		log.Printf("From toplevel, SwitchScreenMsg: %s", m.curScreen.String())
@@ -104,6 +109,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if m.clearScreen {
+		var b strings.Builder
+		for i := 0; i < 100; i++ {
+			fmt.Fprintf(&b, "\n")
+		}
+		return b.String()
+	}
 	switch m.curScreen {
 	case g.TopLevel:
 		var b strings.Builder
@@ -194,6 +206,7 @@ func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, s
 	// update ticker
 	go func(p *tea.Program) {
 		for {
+			p.Send(g.WipeScreenMsg(struct{}{}))
 			p.Send(g.CheckSystemdMsg(struct{}{}))
 			p.Send(g.CheckScriptsMsg(struct{}{}))
 			time.Sleep(time.Second)

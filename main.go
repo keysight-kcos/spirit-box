@@ -26,8 +26,6 @@ import (
 //go:embed webui/build
 var embeddedFiles embed.FS
 
-var HOST_IS_UP = false
-
 func init() {
 	const (
 		defaultPath      = "/etc/spirit-box/"
@@ -64,7 +62,7 @@ func createQuitHandler(quit chan struct{}) func(http.ResponseWriter, *http.Reque
 
 // so frontend knows if host machine's default web page is up
 func hostUpHandler(w http.ResponseWriter, r *http.Request) {
-	if HOST_IS_UP {
+	if device.HOST_IS_UP {
 		fmt.Fprintf(w, "up")
 	} else {
 		fmt.Fprintf(w, "not up")
@@ -107,7 +105,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				HOST_IS_UP = true
+				device.HOST_IS_UP = true
 				rebootServer <- struct{}{}
 				break
 			}

@@ -10,12 +10,14 @@ import (
 	"os/exec"
 	"spirit-box/config"
 	"strings"
+	"time"
 )
 
 var SERVER_PORT = "8080" // spirit-box server port
 var HOST_PORT = "80"     // port that host machine's default server uses
 var TEMP_PORT = "8081"   // port to use redirect HOST_PORT to while waiting for that server to come up
 var NIC = "eth0"         // nic to set iptables rules for
+var HOST_IS_UP = false
 
 func PrintInterfaces() {
 	interfaces, err := net.Interfaces()
@@ -83,7 +85,7 @@ func SetRules(addFlag, nic, from, to string) error {
 	cmd := exec.Command("iptables", args...)
 	bytes, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("First: %w: %s, %v, %d", err, string(bytes), args, len(args))
+		return fmt.Errorf("Error setting iptables rule: %w: %s, %v", err, string(bytes), args)
 	}
 
 	args = strings.Split(
@@ -91,18 +93,33 @@ func SetRules(addFlag, nic, from, to string) error {
 	cmd = exec.Command("iptables", args...)
 	bytes, err = cmd.Output()
 	if err != nil {
-		return fmt.Errorf("Second: %w: %s, %v, %d", err, string(bytes), args, len(args))
+		return fmt.Errorf("Error setting iptables rule: %w: %s, %v", err, string(bytes), args)
 	}
 
 	return nil
 }
 
 func SetPortForwarding() error {
-	err := SetRules("-A", NIC, HOST_PORT, SERVER_PORT)
+	var err error
+	for i := 0; i < 10; i++ {
+		err = SetRules("-A", NIC, HOST_PORT, SERVER_PORT)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Duration(250) * time.Millisecond)
+	}
 	if err != nil {
 		return err
 	}
-	return SetRules("-A", NIC, TEMP_PORT, HOST_PORT)
+
+	for i := 0; i < 10; i++ {
+		err = SetRules("-A", NIC, TEMP_PORT, HOST_PORT)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Duration(250) * time.Millisecond)
+	}
+	return err
 }
 
 func UnsetPortForwarding() error {
