@@ -92,26 +92,11 @@ func main() {
 	ip = ip[:len(ip)-3]
 
 	// apply iptables rules
+	device.UnsetPortForwarding()
 	err := device.SetPortForwarding()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	go func() {
-		for {
-			res, _ := http.Get(fmt.Sprintf("http://localhost:%s", device.TEMP_PORT))
-			if res != nil { // Something's being served on port 80 (redirected to TEMP_PORT)
-				err := device.UnsetPortForwarding()
-				if err != nil {
-					log.Fatal(err)
-				}
-				device.HOST_IS_UP = true
-				rebootServer <- struct{}{}
-				break
-			}
-			time.Sleep(time.Second)
-		}
-	}()
 
 	dConn, err := dbus.New()
 	if err != nil {
@@ -134,6 +119,19 @@ func main() {
 	log.Printf("Starting server on port %s.", device.SERVER_PORT)
 	handler := cors.Default().Handler(mux)
 
+	// Writes default log messages (log.Print, log.Fatal, etc...)
+	// to a file called tuiDebug.
+	f, err := tea.LogToFile(config.DEBUG_FILE, "debug")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	fmt.Printf("\033[2J") // clear the screen
+	log.Print("Starting spirit-box...")
+	uw.InitializeStates()
+	go sc.RunPriorityGroups()
+
 	go func() { // start server, reboot if reboot message is sent
 		for {
 			s := http.Server{Addr: fmt.Sprintf(":%s", device.SERVER_PORT), Handler: handler}
@@ -148,18 +146,32 @@ func main() {
 		}
 	}()
 
-	// Writes default log messages (log.Print, log.Fatal, etc...)
-	// to a file called tuiDebug.
-	f, err := tea.LogToFile(config.DEBUG_FILE, "debug")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-
-	fmt.Printf("\033[2J") // clear the screen
-	log.Print("Starting spirit-box...")
-	uw.InitializeStates()
-	go sc.RunPriorityGroups()
+	go func() {
+		time.Sleep(time.Second)
+		for {
+			allScriptsReady := true
+			for _, pg := range sc.PriorityGroups { // computed in TUI as well... optimize later
+				running, numFailed := pg.GetStatus()
+				if running > 0 || numFailed > 0 {
+					allScriptsReady = false
+					break
+				}
+			}
+			//res, _ := http.Get(fmt.Sprintf("http://localhost:%s", device.TEMP_PORT))
+			if allScriptsReady {
+				err := device.UnsetPortForwarding()
+				if err != nil {
+					log.Fatal(err)
+				}
+				device.HOST_IS_UP = true
+				// give the frontend time to ping the endpoint
+				time.Sleep(time.Duration(2) * time.Second)
+				rebootServer <- struct{}{}
+				break
+			}
+			time.Sleep(time.Second)
+		}
+	}()
 
 	var p *tea.Program
 	go func(quit chan struct{}) {
