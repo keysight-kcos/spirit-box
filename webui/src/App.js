@@ -30,9 +30,10 @@ function App() {
 						.then(data => {
 							console.log("received:", data);
 							if (data !== "not up") {
-								setHostIsUp(true);
-								window.location.reload(true);
-								//window.location.href = window.location.href;
+								setTimeout(() => {
+									setHostIsUp(true);
+									window.location.reload(true);
+								}, 1500);
 							}
 						})
 						.catch(err => console.log(err));
@@ -41,7 +42,7 @@ function App() {
 			}
 		})
 		.catch(err => console.log(err));
-	}, [hostIsUp]);
+	}, [hostIsUp, hostUpEndpoint]);
 
 	const handleUnitInfo = (unit) => {
 		return (e) => {

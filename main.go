@@ -4,11 +4,13 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"spirit-box/config"
 	"spirit-box/device"
 	"spirit-box/logging"
 	"spirit-box/scripts"
@@ -24,7 +26,17 @@ import (
 //go:embed webui/build
 var embeddedFiles embed.FS
 
-var HOST_IS_UP = false
+func init() {
+	const (
+		defaultPath      = "/etc/spirit-box/"
+		pathUsage        = "Path to the directory where spirit-box stores config files and logs."
+		defaultDebugFile = "/dev/null"
+		debugUsage       = "Write debugging logs to a file."
+	)
+
+	flag.StringVar(&config.SPIRIT_PATH, "p", defaultPath, pathUsage)
+	flag.StringVar(&config.DEBUG_FILE, "d", defaultDebugFile, debugUsage)
+}
 
 func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +62,7 @@ func createQuitHandler(quit chan struct{}) func(http.ResponseWriter, *http.Reque
 
 // so frontend knows if host machine's default web page is up
 func hostUpHandler(w http.ResponseWriter, r *http.Request) {
-	if HOST_IS_UP {
+	if device.HOST_IS_UP {
 		fmt.Fprintf(w, "up")
 	} else {
 		fmt.Fprintf(w, "not up")
@@ -71,32 +83,20 @@ func main() {
 	quitTui := make(chan struct{})
 	rebootServer := make(chan struct{})
 
-	ip := device.GetIPv4Addr(device.NIC)
-	ip = ip[:len(ip)-3]
+	flag.Parse()
+	config.InitPaths()
 
 	device.LoadNetworkConfig()
 
+	ip := device.GetIPv4Addr(device.NIC)
+	ip = ip[:len(ip)-3]
+
 	// apply iptables rules
+	device.UnsetPortForwarding()
 	err := device.SetPortForwarding()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	go func() {
-		for {
-			res, _ := http.Get(fmt.Sprintf("http://localhost:%s", device.TEMP_PORT))
-			if res != nil { // Something's being served on port 80 (redirected to TEMP_PORT)
-				err := device.UnsetPortForwarding()
-				if err != nil {
-					log.Fatal(err)
-				}
-				HOST_IS_UP = true
-				rebootServer <- struct{}{}
-				break
-			}
-			time.Sleep(time.Second)
-		}
-	}()
 
 	dConn, err := dbus.New()
 	if err != nil {
@@ -119,6 +119,19 @@ func main() {
 	log.Printf("Starting server on port %s.", device.SERVER_PORT)
 	handler := cors.Default().Handler(mux)
 
+	// Writes default log messages (log.Print, log.Fatal, etc...)
+	// to a file called tuiDebug.
+	f, err := tea.LogToFile(config.DEBUG_FILE, "debug")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	fmt.Printf("\033[2J") // clear the screen
+	log.Print("Starting spirit-box...")
+	uw.InitializeStates()
+	go sc.RunPriorityGroups()
+
 	go func() { // start server, reboot if reboot message is sent
 		for {
 			s := http.Server{Addr: fmt.Sprintf(":%s", device.SERVER_PORT), Handler: handler}
@@ -133,18 +146,32 @@ func main() {
 		}
 	}()
 
-	// Writes default log messages (log.Print, log.Fatal, etc...)
-	// to a file called tuiDebug.
-	f, err := tea.LogToFile("tuiDebug", "debug")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
+	go func() {
+		time.Sleep(time.Second)
+		for {
+			allReady := uw.AllReady()
+			if !allReady {
+				continue
+			}
+			allReady = sc.AllReady()
 
-	fmt.Printf("\033[2J") // clear the screen
-	log.Print("Starting spirit-box...")
-	uw.InitializeStates()
-	go sc.RunPriorityGroups()
+			//res, _ := http.Get(fmt.Sprintf("http://localhost:%s", device.TEMP_PORT))
+			if allReady {
+				err := device.UnsetPortForwarding()
+				if err != nil {
+					log.Fatal(err)
+				}
+				device.HOST_IS_UP = true
+				/*
+					// give the frontend time to ping the endpoint
+					time.Sleep(time.Duration(2) * time.Second)
+				*/
+				rebootServer <- struct{}{}
+				break
+			}
+			time.Sleep(time.Second)
+		}
+	}()
 
 	var p *tea.Program
 	go func(quit chan struct{}) {
@@ -169,6 +196,7 @@ func main() {
 
 	log.Print("Cleanup.")
 	device.UnsetPortForwarding() // No problems if rules were already unset.
+	fmt.Printf("\033[2J")        // clear the screen
 
 	// Dump log lines to stdout for dev purposes.
 	fmt.Printf("\nLog Lines (in order of insertion):\n")

@@ -6,6 +6,7 @@ type SystemdUpdateMsg bool // true when all units are ready
 
 type CheckScriptsMsg struct{}
 type CheckSystemdMsg struct{}
+type WipeScreenMsg struct{}
 
 type Screen int
 

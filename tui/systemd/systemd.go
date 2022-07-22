@@ -62,10 +62,10 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	cmds := make([]tea.Cmd, 0)
+	m.spinner, cmd = m.spinner.Update(msg)
+	cmds = append(cmds, cmd)
 	switch m.curScreen {
 	case g.Systemd:
-		m.spinner, cmd = m.spinner.Update(msg)
-		cmds = append(cmds, cmd)
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			if m.textinputSelected {
@@ -84,11 +84,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			} else {
 				switch msg.String() {
-				case "j":
+				case "j", "down":
 					if m.cursorIndex < len(m.Watcher.Units)-1 {
 						m.cursorIndex++
 					}
-				case "k":
+				case "k", "up":
 					if m.cursorIndex > 0 {
 						m.cursorIndex--
 					}
@@ -129,6 +129,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		log.Printf("From systemd, SwitchScreenMsg: %s", m.curScreen.String())
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		if m.width == 0 {
+			m.width = 150
+		}
+		if m.height == 0 {
+			m.height = 70
+		}
+		log.Printf("width: %d, height: %d", m.width, m.height)
 	}
 
 	m.textinput, cmd = m.textinput.Update(msg)

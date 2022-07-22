@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"spirit-box/config"
 	"spirit-box/logging"
 	"strings"
 	"sync"
@@ -14,8 +15,6 @@ import (
 
 	"github.com/coreos/go-systemd/v22/dbus"
 )
-
-const whitelistPath = "/usr/share/spirit-box/whitelist"
 
 var SYSTEMD_START_TIME time.Time
 
@@ -113,6 +112,21 @@ func (uw *UnitWatcher) AllReadyStatus() string {
 	}
 }
 
+func (uw *UnitWatcher) AllReady() bool {
+	uw.mu.Lock()
+	defer uw.mu.Unlock()
+
+	allReady := true
+	for _, unit := range uw.Units {
+		if !unit.Ready {
+			allReady = false
+			break
+		}
+	}
+
+	return allReady
+}
+
 func (uw *UnitWatcher) Elapsed() time.Duration {
 	return time.Since(uw.started)
 }
@@ -129,7 +143,7 @@ func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 
 	setSystemdStartTime(dConn)
 
-	newUW.Units = LoadWhitelist(whitelistPath, newUW, SYSTEMD_START_TIME)
+	newUW.Units = LoadWhitelist(config.WHITELIST_PATH, newUW, SYSTEMD_START_TIME)
 
 	return newUW
 }

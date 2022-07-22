@@ -23,6 +23,13 @@ var readyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("10"))
 var notReadyStyle = lp.NewStyle().Bold(true).Foreground(lp.Color("9"))
 var alignRightStyle = lp.NewStyle().Align(lp.Right)
 
+const (
+	width  = 500
+	height = 100
+	vPos   = height / 2
+	hPos   = width / 2
+)
+
 type model struct {
 	options     []string
 	cursorIndex int
@@ -31,6 +38,8 @@ type model struct {
 	scripts     scriptsTui.Model
 	ipStr       string
 	spinner     spinner.Model
+	wipe        bool
+	whitespace  string
 }
 
 func (m model) Init() tea.Cmd {
@@ -42,6 +51,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, 0)
 	m.spinner, cmd = m.spinner.Update(msg)
 	cmds = append(cmds, cmd)
+	m.wipe = false
+
+	switch msg := msg.(type) {
+	case g.WipeScreenMsg:
+		m.wipe = true
+		return m, tea.Batch(cmds...)
+	case g.SwitchScreenMsg:
+		m.curScreen = g.Screen(msg)
+		log.Printf("From toplevel, SwitchScreenMsg: %s", m.curScreen.String())
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	case g.CheckSystemdMsg:
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	case g.CheckScriptsMsg:
+		m.scripts, cmd = m.scripts.Update(msg)
+		cmds = append(cmds, cmd)
+	case tea.WindowSizeMsg:
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	case spinner.TickMsg:
+		m.systemd, cmd = m.systemd.Update(msg)
+		cmds = append(cmds, cmd)
+	}
 
 	switch m.curScreen {
 	case g.TopLevel:
@@ -80,48 +113,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	switch msg := msg.(type) {
-	case g.SwitchScreenMsg:
-		m.curScreen = g.Screen(msg)
-		log.Printf("From toplevel, SwitchScreenMsg: %s", m.curScreen.String())
-		m.systemd, cmd = m.systemd.Update(msg)
-		cmds = append(cmds, cmd)
-	case g.CheckSystemdMsg:
-		m.systemd, cmd = m.systemd.Update(msg)
-		cmds = append(cmds, cmd)
-	case g.CheckScriptsMsg:
-		m.scripts, cmd = m.scripts.Update(msg)
-		cmds = append(cmds, cmd)
-	case tea.WindowSizeMsg:
-		m.systemd, cmd = m.systemd.Update(msg)
-		cmds = append(cmds, cmd)
-	case spinner.TickMsg:
-		m.systemd, cmd = m.systemd.Update(msg)
-		cmds = append(cmds, cmd)
-	}
-
 	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
+	if m.wipe {
+		return m.whitespace
+	}
+	var view string
 	switch m.curScreen {
 	case g.TopLevel:
 		var b strings.Builder
 		var info string
 		fmt.Fprintf(&b, "spirit-box\n")
-		if m.systemd.AllReady {
+
+		systemdReady := m.systemd.AllReady
+		scriptsReady := m.scripts.AllReady
+		if systemdReady {
 			info = readyStyle.Render("All systemd units are ready.")
 		} else {
 			info = notReadyStyle.Render("Waiting for systemd units to be ready.")
 		}
 		fmt.Fprintf(&b, info)
 
-		if m.scripts.AllReady {
+		if scriptsReady {
 			info = readyStyle.Render("\nAll scripts have succeeded.")
 		} else {
 			info = notReadyStyle.Render("\nAll scripts have not succeeded.")
 		}
 		fmt.Fprintf(&b, info)
+
+		if systemdReady && scriptsReady {
+			fmt.Fprintf(&b, readyStyle.Render("\n\nSystem is ready. Press 'q' to close spirit-box."))
+		}
 
 		fmt.Fprintf(&b, fmt.Sprintf("\n\n%s\n\n", m.ipStr))
 
@@ -133,7 +157,7 @@ func (m model) View() string {
 				readyStatus = notReadyStyle.Render(m.spinner.View())
 			}
 			left := u.Name + ":"
-			fmt.Fprintf(&b, "%s%s\n", left, alignRight(80-len(left), readyStatus))
+			fmt.Fprintf(&b, "%s%s\n", left, alignRight(100-len(left), readyStatus))
 		}
 
 		for _, s := range m.scripts.GetScriptStatuses() {
@@ -148,7 +172,7 @@ func (m model) View() string {
 			default:
 				readyStatus = notReadyStyle.Render(m.spinner.View())
 			}
-			fmt.Fprintf(&b, "%s%s\n", s.Cmd, alignRight(80-len(s.Cmd), readyStatus))
+			fmt.Fprintf(&b, "%s%s\n", s.Cmd, alignRight(100-len(s.Cmd), readyStatus))
 		}
 
 		fmt.Fprintf(&b, "\n")
@@ -159,15 +183,18 @@ func (m model) View() string {
 			fmt.Fprintf(&b, "%s\n", option)
 		}
 
-		return b.String()
+		view = b.String()
 	case g.Systemd:
-		return m.systemd.View()
+		view = m.systemd.View()
 	case g.Scripts:
-		return m.scripts.View()
+		view = m.scripts.View()
 	case g.UnitInfoScreen:
-		return m.systemd.View()
+		view = m.systemd.View()
+	default:
+		view = "Something went wrong!"
 	}
-	return "Something went wrong!"
+
+	return lp.PlaceHorizontal(width, 0, view)
 }
 
 func alignRight(width int, str string) string {
@@ -177,26 +204,37 @@ func alignRight(width int, str string) string {
 func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc *scripts.ScriptController) model {
 	s := spinner.New()
 	s.Spinner = spinner.Line
+	whitespace := ""
+	for i := 0; i < height; i++ {
+		whitespace += "\n"
+	}
 	return model{
 		options:     []string{"systemd", "scripts"},
 		cursorIndex: 0,
 		curScreen:   g.TopLevel,
 		systemd:     systemd.New(dConn, watcher),
 		scripts:     scriptsTui.New(sc),
-		ipStr:       fmt.Sprintf("Serving web ui at http://%s:%s", ip, device.SERVER_PORT),
+		ipStr:       fmt.Sprintf("Web UI at %s, ports %s, %s", ip, device.HOST_PORT, device.SERVER_PORT),
 		spinner:     s,
+		whitespace:  whitespace,
 	}
 }
 
 func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc *scripts.ScriptController) *tea.Program {
 	model := initialModel(dConn, watcher, ip, sc)
-	p := tea.NewProgram(model)
+	p := tea.NewProgram(model, tea.WithAltScreen())
 	// update ticker
 	go func(p *tea.Program) {
 		for {
 			p.Send(g.CheckSystemdMsg(struct{}{}))
 			p.Send(g.CheckScriptsMsg(struct{}{}))
 			time.Sleep(time.Second)
+		}
+	}(p)
+	go func(p *tea.Program) {
+		for {
+			p.Send(g.WipeScreenMsg(struct{}{}))
+			time.Sleep(time.Duration(1250) * time.Millisecond)
 		}
 	}(p)
 	return p

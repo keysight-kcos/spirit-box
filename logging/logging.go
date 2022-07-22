@@ -6,12 +6,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"spirit-box/config"
 	"sync"
 	"time"
-)
-
-const (
-	LOG_PATH = "/usr/share/spirit-box/logs/"
 )
 
 type LogEvents struct {
@@ -92,7 +89,7 @@ func CreateLogFile() *os.File {
 	cur_time := time.Now()
 	filename := FormatTime(cur_time) + ".log"
 
-	file, err := os.OpenFile(LOG_PATH+filename, os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(config.LOG_PATH+filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}

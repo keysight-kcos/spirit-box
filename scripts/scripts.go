@@ -7,13 +7,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"spirit-box/config"
 	"spirit-box/logging"
 	"strings"
 	"sync"
 	"time"
 )
-
-const SCRIPT_SPEC_PATH = "/usr/share/spirit-box/script_specs.json"
 
 // Loaded from a json file.
 // Specifications for how to run a script.
@@ -126,9 +125,9 @@ func (pg *PriorityGroup) RunAll() {
 	}
 
 	var wg sync.WaitGroup
-	for i, s := range pg.Specs {
+	for i, _ := range pg.Specs {
 		wg.Add(1)
-		go func(index int, spec *ScriptSpec) {
+		go func(spec *ScriptSpec, tracker *ScriptTracker) {
 			timer := time.NewTimer(time.Duration(spec.TotalWaitTime) * time.Millisecond)
 			resChan := make(chan ScriptResult)
 		RLoop:
@@ -138,7 +137,7 @@ func (pg *PriorityGroup) RunAll() {
 				}()
 				select {
 				case res := <-resChan:
-					pg.Trackers[index].Runs = append(pg.Trackers[index].Runs, &res)
+					tracker.Runs = append(tracker.Runs, &res)
 					if res.Success {
 						break RLoop
 					}
@@ -148,8 +147,8 @@ func (pg *PriorityGroup) RunAll() {
 				time.Sleep(time.Duration(spec.RetryTimeout) * time.Millisecond)
 			}
 
-			pg.Trackers[index].EndTime = time.Now()
-			pg.Trackers[index].Finished = true
+			tracker.EndTime = time.Now()
+			tracker.Finished = true
 
 			go func(spec *ScriptSpec, tracker *ScriptTracker) { // logging
 				scriptLog := NewScriptLogObj(spec, tracker)
@@ -157,10 +156,10 @@ func (pg *PriorityGroup) RunAll() {
 				le.StartTime = scriptLog.StartTime
 				le.EndTime = scriptLog.EndTime
 				logging.Logs.AddLogEvent(le)
-			}(s, pg.Trackers[index])
+			}(spec, tracker)
 
 			wg.Done()
-		}(i, s)
+		}(pg.Specs[i], pg.Trackers[i])
 	}
 	wg.Wait()
 }
@@ -257,6 +256,19 @@ func (sc *ScriptController) NumScripts() int {
 	return num
 }
 
+func (sc *ScriptController) AllReady() bool {
+	allReady := true
+	for _, pg := range sc.PriorityGroups {
+		running, numFailed := pg.GetStatus()
+		if running > 0 || numFailed > 0 {
+			allReady = false
+			break
+		}
+	}
+
+	return allReady
+}
+
 func NewController() *ScriptController {
 	priorities := make(map[int]PriorityGroup)
 	specs := LoadScriptSpecs()
@@ -310,11 +322,11 @@ func LoadScriptSpecs() []ScriptSpec {
 
 	temp := ParseObj{}
 	specs := make([]ScriptSpec, 0)
-	if _, err := os.Stat(SCRIPT_SPEC_PATH); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(config.SCRIPT_SPEC_PATH); errors.Is(err, os.ErrNotExist) {
 		return specs
 	}
 
-	bytes, err := os.ReadFile(SCRIPT_SPEC_PATH)
+	bytes, err := os.ReadFile(config.SCRIPT_SPEC_PATH)
 	if err != nil {
 		log.Fatal(err)
 	}
