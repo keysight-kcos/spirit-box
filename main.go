@@ -149,16 +149,14 @@ func main() {
 	go func() {
 		time.Sleep(time.Second)
 		for {
-			allScriptsReady := true
-			for _, pg := range sc.PriorityGroups { // computed in TUI as well... optimize later
-				running, numFailed := pg.GetStatus()
-				if running > 0 || numFailed > 0 {
-					allScriptsReady = false
-					break
-				}
+			allReady := uw.AllReady()
+			if !allReady {
+				continue
 			}
+			allReady = sc.AllReady()
+
 			//res, _ := http.Get(fmt.Sprintf("http://localhost:%s", device.TEMP_PORT))
-			if allScriptsReady {
+			if allReady {
 				err := device.UnsetPortForwarding()
 				if err != nil {
 					log.Fatal(err)

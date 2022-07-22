@@ -256,6 +256,19 @@ func (sc *ScriptController) NumScripts() int {
 	return num
 }
 
+func (sc *ScriptController) AllReady() bool {
+	allReady := true
+	for _, pg := range sc.PriorityGroups {
+		running, numFailed := pg.GetStatus()
+		if running > 0 || numFailed > 0 {
+			allReady = false
+			break
+		}
+	}
+
+	return allReady
+}
+
 func NewController() *ScriptController {
 	priorities := make(map[int]PriorityGroup)
 	specs := LoadScriptSpecs()

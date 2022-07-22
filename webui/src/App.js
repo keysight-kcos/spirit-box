@@ -33,7 +33,7 @@ function App() {
 								setTimeout(() => {
 									setHostIsUp(true);
 									window.location.reload(true);
-								}, 3000);
+								}, 1500);
 							}
 						})
 						.catch(err => console.log(err));

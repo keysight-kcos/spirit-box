@@ -112,6 +112,21 @@ func (uw *UnitWatcher) AllReadyStatus() string {
 	}
 }
 
+func (uw *UnitWatcher) AllReady() bool {
+	uw.mu.Lock()
+	defer uw.mu.Unlock()
+
+	allReady := true
+	for _, unit := range uw.Units {
+		if !unit.Ready {
+			allReady = false
+			break
+		}
+	}
+
+	return allReady
+}
+
 func (uw *UnitWatcher) Elapsed() time.Duration {
 	return time.Since(uw.started)
 }

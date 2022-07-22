@@ -126,19 +126,26 @@ func (m model) View() string {
 		var b strings.Builder
 		var info string
 		fmt.Fprintf(&b, "spirit-box\n")
-		if m.systemd.AllReady {
+
+		systemdReady := m.systemd.AllReady
+		scriptsReady := m.scripts.AllReady
+		if systemdReady {
 			info = readyStyle.Render("All systemd units are ready.")
 		} else {
 			info = notReadyStyle.Render("Waiting for systemd units to be ready.")
 		}
 		fmt.Fprintf(&b, info)
 
-		if m.scripts.AllReady {
+		if scriptsReady {
 			info = readyStyle.Render("\nAll scripts have succeeded.")
 		} else {
 			info = notReadyStyle.Render("\nAll scripts have not succeeded.")
 		}
 		fmt.Fprintf(&b, info)
+
+		if systemdReady && scriptsReady {
+			fmt.Fprintf(&b, readyStyle.Render("\n\nSystem is ready. Press 'q' to close spirit-box."))
+		}
 
 		fmt.Fprintf(&b, fmt.Sprintf("\n\n%s\n\n", m.ipStr))
 
