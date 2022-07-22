@@ -41,7 +41,12 @@ totalWaitTime is the amount of time (in milliseconds) spirit-box will wait for a
 
 ## Logging
 
+
 Spirit-box creates comprehensive logs detailing the systemd services and scripts specified in the configurations. All logs are organized in the JSON format. Each log event has five fields:
+
+## UI
+
+## Tutorial
 
 + startTime - the time the event was observed by spirit-box
 + endTime - the time the event concluded
@@ -102,11 +107,11 @@ The systemd tab has an overview of all whitelisted services. It displays their s
 
 3. reboot
 
-## 07/20
+## 07/22
 Here are our current todos listed in approximate order of importance:
 
 - [ ] Build a demo environment that demonstrates how this tool can be used in the wild, use KCOS usecases as a base
-- [ ] Run the program on different types of devices
+- [x] Run the program on different types of devices
 - [ ] Documentation to make it easy for anyone to jump into the project and add things
 - [ ] Documentation for how the program is used
 - [ ] Streamlined installations onto host machines with minimal tinkering
