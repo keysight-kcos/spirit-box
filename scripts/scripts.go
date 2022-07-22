@@ -125,9 +125,9 @@ func (pg *PriorityGroup) RunAll() {
 	}
 
 	var wg sync.WaitGroup
-	for i, s := range pg.Specs {
+	for i, _ := range pg.Specs {
 		wg.Add(1)
-		go func(index int, spec *ScriptSpec) {
+		go func(spec *ScriptSpec, tracker *ScriptTracker) {
 			timer := time.NewTimer(time.Duration(spec.TotalWaitTime) * time.Millisecond)
 			resChan := make(chan ScriptResult)
 		RLoop:
@@ -137,7 +137,7 @@ func (pg *PriorityGroup) RunAll() {
 				}()
 				select {
 				case res := <-resChan:
-					pg.Trackers[index].Runs = append(pg.Trackers[index].Runs, &res)
+					tracker.Runs = append(tracker.Runs, &res)
 					if res.Success {
 						break RLoop
 					}
@@ -147,8 +147,8 @@ func (pg *PriorityGroup) RunAll() {
 				time.Sleep(time.Duration(spec.RetryTimeout) * time.Millisecond)
 			}
 
-			pg.Trackers[index].EndTime = time.Now()
-			pg.Trackers[index].Finished = true
+			tracker.EndTime = time.Now()
+			tracker.Finished = true
 
 			go func(spec *ScriptSpec, tracker *ScriptTracker) { // logging
 				scriptLog := NewScriptLogObj(spec, tracker)
@@ -156,10 +156,10 @@ func (pg *PriorityGroup) RunAll() {
 				le.StartTime = scriptLog.StartTime
 				le.EndTime = scriptLog.EndTime
 				logging.Logs.AddLogEvent(le)
-			}(s, pg.Trackers[index])
+			}(spec, tracker)
 
 			wg.Done()
-		}(i, s)
+		}(pg.Specs[i], pg.Trackers[i])
 	}
 	wg.Wait()
 }

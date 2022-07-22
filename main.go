@@ -164,8 +164,10 @@ func main() {
 					log.Fatal(err)
 				}
 				device.HOST_IS_UP = true
-				// give the frontend time to ping the endpoint
-				time.Sleep(time.Duration(2) * time.Second)
+				/*
+					// give the frontend time to ping the endpoint
+					time.Sleep(time.Duration(2) * time.Second)
+				*/
 				rebootServer <- struct{}{}
 				break
 			}

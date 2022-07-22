@@ -181,6 +181,12 @@ func (m Model) View() string {
 		}
 	}
 
+	/*
+		for i := 0; i < 20; i++ {
+			fmt.Fprintf(&b, "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n")
+		}
+	*/
+
 	return b.String()
 }
 
