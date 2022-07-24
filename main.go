@@ -16,6 +16,7 @@ import (
 	"spirit-box/scripts"
 	"spirit-box/services"
 	"spirit-box/tui"
+	"spirit-box/tui_lite"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,10 +33,13 @@ func init() {
 		pathUsage        = "Path to the directory where spirit-box stores config files and logs."
 		defaultDebugFile = "/dev/null"
 		debugUsage       = "Write debugging logs to a file."
+		defaultTui       = false
+		tuiUsage         = "Use fancy TUI. Not recommended for serial consoles."
 	)
 
 	flag.StringVar(&config.SPIRIT_PATH, "p", defaultPath, pathUsage)
 	flag.StringVar(&config.DEBUG_FILE, "d", defaultDebugFile, debugUsage)
+	flag.BoolVar(&config.TUI_FANCY, "tui_fancy", false, tuiUsage)
 }
 
 func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *http.Request) {
@@ -120,7 +124,7 @@ func main() {
 	handler := cors.Default().Handler(mux)
 
 	// Writes default log messages (log.Print, log.Fatal, etc...)
-	// to a file called tuiDebug.
+	// to /dev/null by default. File can be specified with -d flag.
 	f, err := tea.LogToFile(config.DEBUG_FILE, "debug")
 	if err != nil {
 		log.Fatal(err)
@@ -162,10 +166,6 @@ func main() {
 					log.Fatal(err)
 				}
 				device.HOST_IS_UP = true
-				/*
-					// give the frontend time to ping the endpoint
-					time.Sleep(time.Duration(2) * time.Second)
-				*/
 				rebootServer <- struct{}{}
 				break
 			}
@@ -177,7 +177,11 @@ func main() {
 	go func(quit chan struct{}) {
 		// the tui logic will "pump" the updates of the unit watcher.
 		// no need to run uw.Start
-		p = tui.CreateProgram(dConn, uw, ip, sc)
+		if config.TUI_FANCY {
+			p = tui.CreateProgram(dConn, uw, ip, sc)
+		} else {
+			p = tui_lite.CreateProgram(dConn, uw, ip, sc)
+		}
 		if err := p.Start(); err != nil {
 			fmt.Printf("There was an error: %v\n", err)
 			os.Exit(1)
