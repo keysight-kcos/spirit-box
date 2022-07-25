@@ -112,19 +112,23 @@ func (uw *UnitWatcher) AllReadyStatus() string {
 	}
 }
 
-func (uw *UnitWatcher) AllReady() bool {
+// Returns number of units that aren't ready yet.
+func (uw *UnitWatcher) NumUnitsNotReady() int {
 	uw.mu.Lock()
 	defer uw.mu.Unlock()
 
-	allReady := true
+	unitsNotReady := len(uw.Units)
 	for _, unit := range uw.Units {
-		if !unit.Ready {
-			allReady = false
-			break
+		if unit.Ready {
+			unitsNotReady--
 		}
 	}
 
-	return allReady
+	return unitsNotReady
+}
+
+func (uw *UnitWatcher) AllReady() bool {
+	return uw.NumUnitsNotReady() == 0
 }
 
 func (uw *UnitWatcher) Elapsed() time.Duration {

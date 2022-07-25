@@ -217,6 +217,7 @@ func (pg *PriorityGroup) PrintAfterRun() { // Print the results of a run. For de
 
 type ScriptController struct {
 	PriorityGroups []*PriorityGroup `json:"priorityGroups"`
+	NumScripts     int              `json:"-"`
 }
 
 func (sc *ScriptController) RunPriorityGroups() {
@@ -248,14 +249,6 @@ func (sc *ScriptController) PrintPriorityGroups() { // for debugging
 	}
 }
 
-func (sc *ScriptController) NumScripts() int {
-	num := 0
-	for _, pg := range sc.PriorityGroups {
-		num += len(pg.Specs)
-	}
-	return num
-}
-
 func (sc *ScriptController) AllReady() bool {
 	allReady := true
 	for _, pg := range sc.PriorityGroups {
@@ -267,6 +260,17 @@ func (sc *ScriptController) AllReady() bool {
 	}
 
 	return allReady
+}
+
+func (sc *ScriptController) GetStatus() (int, int) {
+	running := 0
+	failed := 0
+	for _, pg := range sc.PriorityGroups {
+		r, f := pg.GetStatus()
+		running += r
+		failed += f
+	}
+	return running, failed
 }
 
 func NewController() *ScriptController {
@@ -302,6 +306,7 @@ func NewController() *ScriptController {
 
 	sc := &ScriptController{
 		PriorityGroups: make([]*PriorityGroup, numPGroups),
+		NumScripts:     len(specs),
 	}
 
 	counter := 0
@@ -337,4 +342,39 @@ func LoadScriptSpecs() []ScriptSpec {
 	}
 
 	return temp.SpecArr
+}
+
+// used in TUI
+type ScriptStatus struct {
+	Cmd    string
+	Status int // 0: waiting 1: running 2: failed, 3: succeeded
+}
+
+// just get statuses of individual scripts for displaying in the top level.
+func (sc *ScriptController) GetScriptStatuses() []ScriptStatus {
+	ret := make([]ScriptStatus, 0, sc.NumScripts)
+
+	for _, pg := range sc.PriorityGroups {
+		for j, spec := range pg.Specs {
+			cmdStr := spec.ToString()
+			stat := 0
+
+			if pg.Trackers != nil {
+				tracker := pg.Trackers[j]
+				if tracker.Finished {
+					if tracker.Succeeded() {
+						stat = 3
+					} else {
+						stat = 2
+					}
+				} else {
+					stat = 1
+				}
+			}
+
+			ret = append(ret, ScriptStatus{Cmd: cmdStr, Status: stat})
+		}
+	}
+
+	return ret
 }

@@ -190,38 +190,8 @@ func (m Model) View() string {
 	return b.String()
 }
 
-type ScriptStatus struct {
-	Cmd    string
-	Status int // 0: waiting 1: running 2: failed, 3: succeeded
-}
-
-// just get statuses of individual scripts for displaying in the top level.
-func (m Model) GetScriptStatuses() []ScriptStatus {
-	ret := make([]ScriptStatus, m.sc.NumScripts())
-
-	for _, pg := range m.sc.PriorityGroups {
-		for j, spec := range pg.Specs {
-			cmdStr := spec.ToString()
-			stat := 0
-
-			if pg.Trackers != nil {
-				tracker := pg.Trackers[j]
-				if tracker.Finished {
-					if tracker.Succeeded() {
-						stat = 3
-					} else {
-						stat = 2
-					}
-				} else {
-					stat = 1
-				}
-			}
-
-			ret = append(ret, ScriptStatus{Cmd: cmdStr, Status: stat})
-		}
-	}
-
-	return ret
+func (m Model) GetScriptStatuses() []scripts.ScriptStatus {
+	return m.sc.GetScriptStatuses()
 }
 
 func alignRight(width int, str string) string {
