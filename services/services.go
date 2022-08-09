@@ -208,6 +208,7 @@ func (u *UnitInfo) update(updates [3]string, properties map[string]interface{}) 
 			le := logging.NewLogEvent(fmt.Sprintf("%s state change.", unitName), obj)
 			le.EndTime = timeChanged
 			le.StartTime = at
+			le.Duration = timeChanged.Sub(at)
 			logging.Logs.AddLogEvent(le)
 		}(obj, timeChanged, u.At, u.Name)
 
@@ -338,6 +339,7 @@ func setSystemdStartTime(dConn *dbus.Conn) {
 
 	msgLog.StartTime = SYSTEMD_START_TIME
 	msgLog.EndTime = SYSTEMD_START_TIME
+	msgLog.Duration = SYSTEMD_START_TIME.Sub(SYSTEMD_START_TIME)
 
 	logging.Logs.AddLogEvent(msgLog)
 }
