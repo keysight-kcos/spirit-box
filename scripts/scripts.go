@@ -155,6 +155,7 @@ func (pg *PriorityGroup) RunAll() {
 				le := logging.NewLogEvent(scriptLog.LogLine(), scriptLog)
 				le.StartTime = scriptLog.StartTime
 				le.EndTime = scriptLog.EndTime
+				le.Duration = scriptLog.EndTime.Sub(scriptLog.StartTime)
 				logging.Logs.AddLogEvent(le)
 			}(spec, tracker)
 

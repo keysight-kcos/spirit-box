@@ -26,6 +26,7 @@ type LogObject interface {
 type LogEvent struct {
 	StartTime time.Time `json:"startTime"`
 	EndTime   time.Time `json:"endTime"`
+	Duration  time.Duration `json:"duration"`
 	Desc      string    `json:"description"`
 	ObjType   string    `json:"objectType"`
 	Obj       LogObject `json:"object"`
@@ -36,6 +37,7 @@ func NewLogEvent(desc string, obj LogObject) *LogEvent {
 	return &LogEvent{
 		StartTime: time.Now(),
 		EndTime:   time.Now(),
+		Duration:  0,
 		Desc:      desc,
 		ObjType:   obj.GetObjType(),
 		Obj:       obj,
@@ -82,7 +84,9 @@ func InitLogger() {
 	Logs = &LogEvents{Events: events}
 
 	initStr := "Starting spirit-box..."
-	Logs.AddLogEvent(NewLogEvent(initStr, &MessageLog{initStr}))
+	startEvent := NewLogEvent(initStr, &MessageLog{initStr})
+	startEvent.Duration = startEvent.EndTime.Sub(startEvent.StartTime)
+	Logs.AddLogEvent(startEvent)
 }
 
 func CreateLogFile() *os.File {
