@@ -44,10 +44,6 @@ totalWaitTime is the amount of time (in milliseconds) spirit-box will wait for a
 
 Spirit-box creates comprehensive logs detailing the systemd services and scripts specified in the configurations. All logs are organized in the JSON format. Each log event has five fields:
 
-## UI
-
-## Tutorial
-
 + startTime - the time the event was observed by spirit-box
 + endTime - the time the event concluded
 + description - a short information excerpt of the event
@@ -93,8 +89,11 @@ The systemd tab has an overview of all whitelisted services. It displays their s
 
 `dpkg -i spirit-box_...arm64.deb`
 
-3. reboot
+3. enable 
 
+`systemctl enable spirit-box@ttyS0.service`
+
+4. reboot
 
 ### Fedora/RHEL Install
 1. download the RPM package
@@ -105,24 +104,29 @@ The systemd tab has an overview of all whitelisted services. It displays their s
 
 `rpm -ivh spirit-box-...x86_64.rpm`
 
-3. reboot
+3. enable 
 
-## 07/22
+`systemctl enable spirit-box@ttyS0.service`
+
+4. reboot
+
+## 08/16
 Here are our current todos listed in approximate order of importance:
 
-- [ ] Build a demo environment that demonstrates how this tool can be used in the wild, use KCOS usecases as a base
-- [x] Run the program on different types of devices
+- [x] Graceful handoff between spirit-box web UI and host machine's web UI
+- [x] Option for a sequential view of all checks -> TUI lite
+- [x] Timestamps and PID for each individual script run -> this is now included in logs
+- [x] Exact times for systemd timestamps rather than observed times -> events are now ns precision
+- [x] Build a demo environment that demonstrates how this tool can be used in the wild, use KCOS usecases as a base
+- [x] Run the program on different types of devices -> tested on KCOS, CentOS, Ubuntu
 - [ ] Documentation to make it easy for anyone to jump into the project and add things
 - [ ] Documentation for how the program is used
-- [ ] Streamlined installations onto host machines with minimal tinkering
+- [x] Streamlined installations onto host machines with minimal tinkering -> easy to install deb packages
+- [ ] Log visualization -> timeline, graphs, etc. thru grafana
 - [ ] Productization -> Make it easy for others to decide if they have a need for this tool
 - [ ] Option to disable the ability to add more systemd units during runtime
 - [ ] Interactivity with script execution
-- [ ] Log visualization -> timeline, graphs, etc.
 - [ ] Combine config files into a single file if that would provide any benefit
 - [ ] Possible use of eBPF
 - [ ] Performance and memory profiling
-- [x] Graceful handoff between spirit-box web UI and host machine's web UI.
-- [x] Option for a sequential view of all checks
-- [x] Timestamps and PID for each individual script run -> this is now included in logs
-- [x] Exact times for systemd timestamps rather than observed times. The extra precision would be great but the method for getting exact timestamps needs to be explored.
+
