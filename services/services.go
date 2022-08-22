@@ -335,7 +335,7 @@ func setSystemdStartTime(dConn *dbus.Conn) {
 
 	// log when systemd was started
 	msg := "SystemD was started."
-	msgLog := logging.NewLogEvent(msg, &logging.MessageLog{msg})
+	msgLog := logging.NewLogEvent(msg, &logging.MessageLog{msg, "SystemD"})
 
 	msgLog.StartTime = SYSTEMD_START_TIME
 	msgLog.EndTime = SYSTEMD_START_TIME
