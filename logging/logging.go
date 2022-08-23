@@ -69,6 +69,7 @@ func (l *LogEvents) WriteJSON(f io.Writer) {
 
 type MessageLog struct {
 	Message string `json:"message"`
+	Name string `json:"name"`
 }
 
 func (m *MessageLog) LogLine() string {
@@ -84,7 +85,7 @@ func InitLogger() {
 	Logs = &LogEvents{Events: events}
 
 	initStr := "Starting spirit-box..."
-	startEvent := NewLogEvent(initStr, &MessageLog{initStr})
+	startEvent := NewLogEvent(initStr, &MessageLog{initStr, "spirit-box"})
 	startEvent.Duration = startEvent.EndTime.Sub(startEvent.StartTime)
 	Logs.AddLogEvent(startEvent)
 }

@@ -87,6 +87,7 @@ type ScriptLogObj struct { // for json logs
 	Runs      []*ScriptResult `json:"runs"`
 	Spec      *ScriptSpec     `json:"scriptSpecification"`
 	Succeeded bool            `json:"succeeded"`
+	Name      string          `json:"name"`
 }
 
 func NewScriptLogObj(spec *ScriptSpec, tracker *ScriptTracker) *ScriptLogObj {
@@ -96,6 +97,7 @@ func NewScriptLogObj(spec *ScriptSpec, tracker *ScriptTracker) *ScriptLogObj {
 		Runs:      tracker.Runs,
 		Spec:      spec,
 		Succeeded: tracker.Succeeded(),
+		Name:      strings.Split(spec.Cmd, "/")[len(strings.Split(spec.Cmd, "/"))-1],
 	}
 }
 
