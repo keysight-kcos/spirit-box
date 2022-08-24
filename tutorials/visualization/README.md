@@ -1,7 +1,7 @@
 Visualization Tutorial
 =================
 
-This tutorial will explain how to get spirit-box logs visualized in Grafana. All dependancies are installed locally on the machine.
+This tutorial will explain how to get spirit-box logs visualized in Grafana. All dependancies are installed locally on the machine for this tutorial.
 
 Prerequisites: 
 
@@ -11,9 +11,11 @@ Prerequisites:
 
 ## Scrape log data using Telegraf
 
-The first step is saving the telegraf configuration file that will parse the Json in the logs. The default conf file is located:
+The first step is changing the telegraf configuration file that will parse the Json in the logs. The default conf file is located:
 
 ```/etc/telegraf/telegraf.conf```
+
+Replace the default conf file with the file provided.
 
 Replace ```files = ["..."]``` with the filepath to the spirit-box log.
 
