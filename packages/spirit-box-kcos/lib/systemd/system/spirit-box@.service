@@ -1,0 +1,17 @@
+[Unit]
+Description=TUI program for observing systemd units and script execution during Linux boot-up.
+Before=getty.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/console-mux /usr/bin/spirit-box 
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/%I
+TTYReset=no
+TTYVHangup=no
+TTYVTDisallocate=no
+SendSIGHUP=yes
+
+[Install]
+WantedBy=multi-user.target

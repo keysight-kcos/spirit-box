@@ -1,0 +1,12 @@
+#!/bin/bash
+#set -x
+
+cmd="kubectl wait --namespace kube-system --for=condition=Ready --timeout=1s pod -l k8s-app=kube-dns"
+output=$(exec $cmd 2>&1)
+if [[ $? != 0 ]]; then
+        #echo {\"info\": \"$cmd -\> $output\", \"success\": false}
+        echo {\"info\": \"$cmd -\> failed\", \"success\": false}
+        exit 0
+fi
+
+echo {\"info\": \"$cmd -\> succeeded\", \"success\": true}

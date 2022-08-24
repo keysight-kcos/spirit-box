@@ -1,0 +1,53 @@
+{
+	"scriptSpecs": [
+		{
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-check-cluster",
+			"args": [],
+			"priority": 1,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-check-apiserver",
+			"args": [],
+			"priority": 2,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-ingress-ready",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-ingress-nginx-ready",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/etc/spirit-box/kcos-scripts/kube-dns-ready",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/etc/spirit-box/kcos-scripts/kube-proxy-ready",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/etc/spirit-box/kcos-scripts/weave-net-ready",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		}
+	]
+}

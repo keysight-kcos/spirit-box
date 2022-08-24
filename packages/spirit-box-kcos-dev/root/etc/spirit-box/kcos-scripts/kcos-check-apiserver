@@ -1,0 +1,14 @@
+#!/bin/bash
+
+addr="$(kcos-apiserver-address)"
+#addr="fakeaddr"
+
+result="$(curl --silent --insecure --fail --max-time 5 "${addr}/healthz")"
+
+if [[ "$result" == "ok" ]]; then
+        #version=$(curl --silent --insecure --fail "${addr}/version" | jq -r .gitVersion)
+        #echo "{\"info\": \"kube-apiserver "$version" alive\", \"success\": true}"
+        echo "{\"info\": \"kube-apiserver is alive\", \"success\": true}"
+else
+        echo "{\"info\": \"kube-apiserver is dead\", \"success\": false}"
+fi

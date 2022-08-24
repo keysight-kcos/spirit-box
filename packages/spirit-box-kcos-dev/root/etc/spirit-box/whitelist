@@ -1,0 +1,5 @@
+docker.service:running
+kubelet.service:running
+containerd.service:running
+kcos-startup.service:exited
+kcos-fixup-kubelet-cpumanager.service:exited

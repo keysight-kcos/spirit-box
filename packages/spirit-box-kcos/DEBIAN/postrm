@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -x
+
+rm -rf /root/usr/share/spirit-box

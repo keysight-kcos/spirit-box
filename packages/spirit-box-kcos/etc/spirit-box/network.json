@@ -1,0 +1,6 @@
+{
+	"serverPort": "8080",
+	"hostPort": "80",
+	"tempPort": "8081",
+	"nic": "mgmt0"
+}
