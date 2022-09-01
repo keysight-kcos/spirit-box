@@ -51,8 +51,6 @@ func createSystemdHandler(uw *services.UnitWatcher) func(http.ResponseWriter, *h
 
 func createScriptsHandler(sc *scripts.ScriptController) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Print("Received req at scripts endpoint.")
-		log.Printf("%v", *sc)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(sc.PriorityGroups)
 	}

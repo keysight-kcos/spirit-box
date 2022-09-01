@@ -102,7 +102,7 @@ func SetRules(addFlag, nic, from, to string) error {
 func SetPortForwarding() error {
 	var err error
 	for i := 0; i < 10; i++ {
-		err = SetRules("-A", NIC, HOST_PORT, SERVER_PORT)
+		err = SetRules("-A", NIC, TEMP_PORT, HOST_PORT)
 		if err == nil {
 			break
 		}
@@ -113,7 +113,7 @@ func SetPortForwarding() error {
 	}
 
 	for i := 0; i < 10; i++ {
-		err = SetRules("-A", NIC, TEMP_PORT, HOST_PORT)
+		err = SetRules("-A", NIC, HOST_PORT, SERVER_PORT)
 		if err == nil {
 			break
 		}
