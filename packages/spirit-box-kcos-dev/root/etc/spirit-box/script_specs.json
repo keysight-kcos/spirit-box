@@ -43,6 +43,76 @@
 			"totalWaitTime": 300000
 		},
 		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-keycloak",
+			"args": [],
+			"priority": 4,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-authproxy-keycloak",
+			"args": [],
+			"priority": 4,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-logging-framework",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-logging-rotate",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-firewall",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-rest-api",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-ui-service",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-ui-client",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-shell",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
+			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-shell-configuration",
+			"args": [],
+			"priority": 3,
+			"retryTimeout": 150,
+			"totalWaitTime": 300000
+		},
+		{
 			"cmd": "/root/etc/spirit-box/kcos-scripts/weave-net-ready",
 			"args": [],
 			"priority": 3,

@@ -1,7 +1,7 @@
 #!/bin/bash
 #set -x
 
-cmd="kubectl wait --namespace kcos-sso --for=condition=Ready --timeout=1s pod -l app.kubernetes.io/name=kcos-keycloak"
+cmd="kubectl wait --namespace kcos-sso --for=condition=Ready --timeout=1s pod -l statefulset.kubernetes.io/pod-name=keycloak-0"
 
 output=$(exec $cmd 2>&1)
 if [[ $? != 0 ]]; then

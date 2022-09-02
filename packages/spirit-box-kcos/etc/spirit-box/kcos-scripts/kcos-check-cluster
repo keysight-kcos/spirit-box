@@ -4,9 +4,9 @@
 cmd="kubectl cluster-info"
 output=$(exec $cmd 2>&1)
 if [[ $? != 0 ]]; then
-        #echo {\"info\": \"$cmd -\> $output\", \"success\": false}
-        echo {\"info\": \"cluster is up\", \"success\": true}
-        exit 0
+	#echo {\"info\": \"$cmd -\> $output\", \"success\": false}
+	echo {\"info\": \"cluster is up\", \"success\": true}
+	exit 0
 fi
 
 # Output has escape codes that mess with things... don't want to debug right now
