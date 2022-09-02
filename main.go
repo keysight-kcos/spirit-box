@@ -178,7 +178,7 @@ func main() {
 		if config.TUI_FANCY {
 			p = tui.CreateProgram(dConn, uw, ip, sc)
 		} else {
-			p = tui_lite.CreateProgram(dConn, uw, ip, sc)
+			p = tui_lite.CreateProgram(dConn, uw, sc)
 		}
 		if err := p.Start(); err != nil {
 			fmt.Printf("There was an error: %v\n", err)

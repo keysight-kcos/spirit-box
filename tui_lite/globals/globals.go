@@ -8,6 +8,7 @@ type CheckScriptsMsg struct{}
 type CheckSystemdMsg struct{}
 type WipeScreenMsg struct{}
 type RestoreScreenMsg struct{}
+type UpdateIPsMsg struct{}
 
 type Screen int
 
