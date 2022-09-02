@@ -68,6 +68,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case g.CheckScriptsMsg:
 		m.scripts, cmd = m.scripts.Update(msg)
 		cmds = append(cmds, cmd)
+	case g.UpdateIPsMsg:
+		m.ipStr = device.CreateIPStr()
+		return m, tea.Batch(cmds...)
 	case tea.WindowSizeMsg:
 		m.systemd, cmd = m.systemd.Update(msg)
 		cmds = append(cmds, cmd)
@@ -201,7 +204,7 @@ func alignRight(width int, str string) string {
 	return alignRightStyle.Width(width).Render(str)
 }
 
-func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc *scripts.ScriptController) model {
+func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, sc *scripts.ScriptController) model {
 	s := spinner.New()
 	s.Spinner = spinner.Line
 	whitespace := ""
@@ -214,14 +217,14 @@ func initialModel(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc
 		curScreen:   g.TopLevel,
 		systemd:     systemd.New(dConn, watcher),
 		scripts:     scriptsTui.New(sc),
-		ipStr:       fmt.Sprintf("Web UI at %s, ports %s, %s", ip, device.HOST_PORT, device.SERVER_PORT),
+		ipStr:       device.CreateIPStr(),
 		spinner:     s,
 		whitespace:  whitespace,
 	}
 }
 
-func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, sc *scripts.ScriptController) *tea.Program {
-	model := initialModel(dConn, watcher, ip, sc)
+func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, sc *scripts.ScriptController) *tea.Program {
+	model := initialModel(dConn, watcher, sc)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	// update ticker
 	go func(p *tea.Program) {
@@ -235,6 +238,12 @@ func CreateProgram(dConn *dbus.Conn, watcher *services.UnitWatcher, ip string, s
 		for {
 			p.Send(g.WipeScreenMsg(struct{}{}))
 			time.Sleep(time.Duration(1250) * time.Millisecond)
+		}
+	}(p)
+	go func(p *tea.Program) {
+		for {
+			p.Send(g.UpdateIPsMsg(struct{}{}))
+			time.Sleep(3*time.Second)
 		}
 	}(p)
 	return p

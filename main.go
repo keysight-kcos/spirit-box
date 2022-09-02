@@ -176,7 +176,7 @@ func main() {
 		// the tui logic will "pump" the updates of the unit watcher.
 		// no need to run uw.Start
 		if config.TUI_FANCY {
-			p = tui.CreateProgram(dConn, uw, ip, sc)
+			p = tui.CreateProgram(dConn, uw, sc)
 		} else {
 			p = tui_lite.CreateProgram(dConn, uw, sc)
 		}
