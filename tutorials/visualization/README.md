@@ -5,6 +5,8 @@ This tutorial will explain how to get spirit-box logs visualized in Grafana. All
 
 Prerequisites: 
 
++ Python3
++ Pip3
 + Telegraf 1.23.2
 + Elasticsearch 7.16.3
 + Grafana 9.0.5
@@ -21,7 +23,7 @@ Replace ```files = ["..."]``` with the filepath to the spirit-box log.
 
 If running elasticsearch in a container, replace ```urls = ["..."]``` in outputs.elasticsearch with the url of the cluster. (**not tested**)
 
-Once the conf file is finished, you may then run telegraf. Confirm that the log was successfully imported by visiting ```http://localhost:9200/_cat/indices?v```
+Once the conf file is finished, you may then run telegraf. By default it is located at `/usr/bin/telegraf`. Confirm that the log was successfully imported by visiting ```http://localhost:9200/_cat/indices?v```
 
 ![image](https://user-images.githubusercontent.com/56091505/186519577-e4bab209-594e-4da4-bb4c-b8ca5aea7c6d.png)
 
