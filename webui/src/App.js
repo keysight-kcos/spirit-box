@@ -33,12 +33,12 @@ function App() {
 								setTimeout(() => {
 									setHostIsUp(true);
 									window.location.reload(true);
-								}, 1500);
+								}, 3000);
 							}
 						})
 						.catch(err => console.log(err));
 					}
-				}, 2500);
+				}, 1000);
 			}
 		})
 		.catch(err => console.log(err));
@@ -62,6 +62,23 @@ function App() {
 		return <UnitInfo unitInfo={unitInfo} close={() => setUnitInfoOpen(false)} />;
 	} else if (trackerInfoOpen) {
 		return <TrackerInfo tracker={trackerInfo} close={() => setTrackerInfoOpen(false)}/>;
+	} else if (hostIsUp) {
+			<div className="bg-blue-300 pl-4 pb-4 h-screen w-full table pr-5">
+			<h1 className="text-3xl font-extrabold mb-10 mt-5">
+				spirit-box
+			</h1>
+
+			<div>
+				Host machine's webui is ready.
+			</div>
+
+			<button className="font-bold bg-gray-300 mt-10 p-2 rounded hover:bg-gray-400 shadow-xl" 
+			onClick={() => window.location.reload(true)}>
+
+			Reload page
+			</button>
+
+			</div>
 	} else {
 		return (
 			<div className="bg-blue-300 pl-4 pb-4 h-screen w-full table pr-5">

@@ -164,6 +164,7 @@ func main() {
 					log.Fatal(err)
 				}
 				device.HOST_IS_UP = true
+				time.Sleep(2 * time.Second)
 				rebootServer <- struct{}{}
 				break
 			}
