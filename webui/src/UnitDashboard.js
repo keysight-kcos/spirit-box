@@ -102,7 +102,7 @@ const UnitDashboard = ({ handleUnitInfo }) => {
 				<tbody>
 					{units.map(unit => (
 						<tr key={unit.Name} className="unitRow" onClick={handleUnitInfo(unit)}>
-							<td className="pr-5">{unit.Name}</td>
+							<td className="pr-5">{unit.Desc === "" ? unit.Name : unit.Desc}</td>
 							<td>{unit.LoadState}</td>
 							<td>{unit.ActiveState}</td>
 							<td>{unit.SubState}</td>

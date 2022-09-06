@@ -133,7 +133,7 @@ const ScriptsDashboard = ({ handleTrackerInfo }) => {
 								{pg.num}
 								</td>
 								<td>
-								{spec.cmd} {spec.args.join(" ")}
+								{spec.desc === "" ? spec.cmd+" "+spec.args.join(" ") : spec.desc}
 								</td>
 								<td>
 									{pg.trackers === null || pg.trackers[ind] === null ? 0 : pg.trackers[ind].runs.length}
