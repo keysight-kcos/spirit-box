@@ -74,8 +74,87 @@ func GetIPv4Addr(interfaceName string) string {
 	return "Unable to find IP."
 }
 
+func GetAddrs(interfaceName string) ([]string, error) {
+	i, err := net.InterfaceByName(interfaceName)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []string{}
+	addrs, err := i.Addrs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, addr := range addrs {
+		address := addr.String()
+		if !isLinkLocalIPv6(address) {
+			ret = append(ret, address)
+		}
+	}
+
+	return ret, nil
+}
+
+func CreateIPStr() string {
+	ips, err := GetAddrs(NIC)
+	if err != nil {
+		log.Print(err)
+		ips = []string{"not found"}
+	}
+	return fmt.Sprintf("IP: %s\nPorts: host -> %s, spirit-box server -> %s", strings.Join(ips, ", "), HOST_PORT, SERVER_PORT)
+}
+
 func isIPv4(address string) bool {
 	return strings.Count(address, ":") < 2
+}
+
+func isLinkLocalIPv6(address string) bool {
+	return strings.HasPrefix(address, "fe80")
+}
+
+func Stub() {
+	interfaceName := "mgmt0"
+	i, err := net.InterfaceByName(interfaceName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	/*
+	all, err := net.InterfaceAddrs()
+	if err != nil {
+		log.Fatal(err)
+	}
+	*/
+
+	multi, err := i.MulticastAddrs()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uni, err := i.Addrs()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	/*
+	fmt.Printf("All:\n")
+	for _, addr := range all {
+		fmt.Printf("%s: %s\n", addr.String(), addr.Network())
+	}
+	*/
+
+	fmt.Printf("Unicast:\n")
+	for _, addr := range uni {
+		address, network := addr.String(), addr.Network()
+		fmt.Printf("%s: %s, IsLinkLocalIPv6: %t\n", address, network, isLinkLocalIPv6(address))
+	}
+
+	fmt.Printf("Multicast:\n")
+	for _, addr := range multi {
+		address, network := addr.String(), addr.Network()
+		fmt.Printf("%s: %s, IsLinkLocalIPv6: %t\n", address, network, isLinkLocalIPv6(address))
+	}
 }
 
 func SetRules(addFlag, nic, from, to string) error {

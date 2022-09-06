@@ -5,15 +5,11 @@
 cmd="kubectl wait --namespace kcos-framework --for=condition=Ready --timeout=1s pod -l app.kubernetes.io/name=kcos-ingress"
 output=$(exec $cmd 2>&1)
 if [[ $? != 0 ]]; then
-        #echo {\"info\": \"$cmd -\> $output\", \"success\": false}
-        result="{\"info\": \"$cmd -> failed\", \"success\": false}"
-        echo $result >> dump
-        echo $output >> dump
-        echo $result
-        exit 0
+	#echo {\"info\": \"$cmd -\> $output\", \"success\": false}
+	result="{\"info\": \"$cmd -> failed\", \"success\": false}"
+	echo $result
+	exit 0
 fi
 
 result="{\"info\": \"$cmd -> succeeded\", \"success\": true}"
-echo $result >> dump
-echo $output >> dump
 echo $result

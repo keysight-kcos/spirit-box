@@ -7,7 +7,7 @@ session="kcos-mux-spirit-box"
 cmd="$*"
 
 cd
-stty rows 35 cols 150
+stty rows 45 cols 150
 tmux \
 	new-session -A -s "$session" \
 	"$cmd" \; unbind-key -a
