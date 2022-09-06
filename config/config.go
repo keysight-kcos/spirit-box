@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -38,8 +39,9 @@ func InitPaths() {
 }
 
 type GeneralConfig struct {
-	SystemdAccess bool `json:"systemdAccess"`
-	Enabled       bool `json:"enabled"`
+	EnableOverridePath string `json:"enableOverridePath"`
+	SystemdAccess      bool   `json:"systemdAccess"`
+	Enabled            bool   `json:"enabled"`
 }
 
 func LoadGeneralConfig() {
@@ -60,6 +62,17 @@ func LoadGeneralConfig() {
 		log.Fatal(fmt.Errorf("Loading general config: %s", err.Error()))
 	}
 
+	// If an override path is provided, the existence of the file determines
+	// whether or not spirit-box will be enabled.
+	if temp.Config.EnableOverridePath != "" {
+		if _, err := os.Stat(temp.Config.EnableOverridePath); errors.Is(err, os.ErrNotExist) {
+			ENABLED = false
+		} else {
+			ENABLED = true
+		}
+	} else {
+		ENABLED = temp.Config.Enabled
+	}
+
 	SYSTEMD_ACCESS = temp.Config.SystemdAccess
-	ENABLED = temp.Config.Enabled
 }

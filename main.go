@@ -90,6 +90,7 @@ func main() {
 
 	config.LoadGeneralConfig()
 	if !config.ENABLED { // exit early
+		fmt.Printf("spirit-box is disabled. Exiting now.\n")
 		return
 	}
 
