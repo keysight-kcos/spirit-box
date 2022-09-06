@@ -2,14 +2,13 @@
 package services
 
 import (
-	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"spirit-box/config"
 	"spirit-box/logging"
-	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +16,12 @@ import (
 )
 
 var SYSTEMD_START_TIME time.Time
+
+type UnitSpec struct {
+	Name            string `json:"name"`
+	Desc            string `json:"desc"`
+	SubStateDesired string `json:"subStateDesired"`
+}
 
 type UnitWatcher struct {
 	Units   []*UnitInfo
@@ -87,7 +92,7 @@ func (uw *UnitWatcher) InitializeState(u *UnitInfo) error {
 func (uw *UnitWatcher) AddUnit(name string) {
 	uw.mu.Lock()
 	defer uw.mu.Unlock()
-	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", nil, SYSTEMD_START_TIME, uw}
+	newUnit := &UnitInfo{name, "watch", false, "", "", "", "", "", nil, SYSTEMD_START_TIME, uw}
 	err := uw.InitializeState(newUnit)
 	if err != nil {
 		return // no feedback on failure
@@ -147,7 +152,7 @@ func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 
 	setSystemdStartTime(dConn)
 
-	newUW.Units = LoadWhitelist(config.WHITELIST_PATH, newUW, SYSTEMD_START_TIME)
+	newUW.Units = LoadUnitSpecs(config.UNIT_SPEC_PATH, newUW, SYSTEMD_START_TIME)
 
 	return newUW
 }
@@ -161,7 +166,8 @@ type UnitInfo struct {
 	LoadState   string
 	ActiveState string
 	SubState    string
-	Description string
+	Description string // from systemd
+	Desc        string // user-provided 
 	Properties  map[string]interface{}
 	At          time.Time
 	uw          *UnitWatcher
@@ -249,29 +255,43 @@ func (u *UnitStateChange) GetObjType() string {
 	return "SystemD unit state change"
 }
 
-func LoadWhitelist(filename string, uw *UnitWatcher, startTime time.Time) []*UnitInfo {
+func LoadUnitSpecs(filename string, uw *UnitWatcher, startTime time.Time) []*UnitInfo {
+	type ParseObj struct {
+		SpecArr []UnitSpec `json:"unitSpecs"`
+	}
+
+	temp := ParseObj{}
 	units := make([]*UnitInfo, 0)
-	file, err := os.Open(filename)
+	if _, err := os.Stat(config.UNIT_SPEC_PATH); errors.Is(err, os.ErrNotExist) {
+		return units
+	}
+
+	bytes, err := os.ReadFile(config.UNIT_SPEC_PATH)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("Reading unit specs: %s", err.Error()))
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		split := strings.Split(line, ":")
-		if len(split) != 2 {
-			log.Fatal(errors.New("Line in whitelist did not match <unit name>:<substate> format."))
-		}
-
-		/*
-		 Accurate start time (time when systemd starts) when running from boot.
-		 If not running from boot, journalctl should be used
-		 to get timestamps of all intermediate state changes.
-		*/
-		units = append(units, &UnitInfo{split[0], split[1], false, "", "", "", "", nil, startTime, uw})
+	err = json.Unmarshal(bytes, &temp)
+	if err != nil {
+		log.Fatal(fmt.Errorf("Reading unit specs: %s", err.Error()))
 	}
+
+	for _, s := range temp.SpecArr {
+		units = append(units, &UnitInfo{
+			s.Name,
+			s.SubStateDesired,
+			false,
+			"",
+			"",
+			"",
+			"",
+			s.Desc,
+			nil,
+			startTime,
+			uw,
+		})
+	}
+
 	return units
 }
 

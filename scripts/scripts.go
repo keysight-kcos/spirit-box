@@ -18,6 +18,7 @@ import (
 // Specifications for how to run a script.
 type ScriptSpec struct {
 	Cmd           string   `json:"cmd"`
+	Desc          string   `json:"desc"`
 	Args          []string `json:"args"`
 	Priority      int      `json:"priority"`
 	RetryTimeout  int      `json:"retryTimeout"`  // time in ms between retrying a failed script
@@ -350,6 +351,7 @@ func LoadScriptSpecs() []ScriptSpec {
 // used in TUI
 type ScriptStatus struct {
 	Cmd    string
+	Desc   string
 	Status int // 0: waiting 1: running 2: failed, 3: succeeded
 }
 
@@ -375,7 +377,7 @@ func (sc *ScriptController) GetScriptStatuses() []ScriptStatus {
 				}
 			}
 
-			ret = append(ret, ScriptStatus{Cmd: cmdStr, Status: stat})
+			ret = append(ret, ScriptStatus{Cmd: cmdStr, Desc: spec.Desc, Status: stat})
 		}
 	}
 

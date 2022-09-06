@@ -89,17 +89,31 @@ func (m model) View() string {
 	var readyStatus string
 	fmt.Fprintf(&b, "\nSystemD Units:\n")
 	for _, u := range m.watcher.Units {
+		var displayName string
+		if u.Desc != "" {
+			displayName = u.Desc
+		} else {
+			displayName = u.Name
+		}
+
 		if u.Ready {
 			readyStatus = readyStyle.Render("READY")
 		} else {
 			readyStatus = notReadyStyle.Render(m.spinner.View())
 		}
-		left := u.Name + ":"
+
+		left := displayName + ":"
 		fmt.Fprintf(&b, "%s%s\n", left, alignRight(100-len(left), readyStatus))
 	}
 
 	fmt.Fprintf(&b, "\nScripts:\n")
 	for _, s := range m.controller.GetScriptStatuses() {
+		var displayName string
+		if s.Desc != "" {
+			displayName = s.Desc
+		} else {
+			displayName = s.Cmd
+		}
 		switch s.Status {
 		case 0:
 			readyStatus = notReadyStyle.Render("NOT STARTED")
@@ -110,7 +124,7 @@ func (m model) View() string {
 		default:
 			readyStatus = notReadyStyle.Render(m.spinner.View())
 		}
-		fmt.Fprintf(&b, "%s%s\n", s.Cmd, alignRight(100-len(s.Cmd), readyStatus))
+		fmt.Fprintf(&b, "%s%s\n", displayName, alignRight(100-len(displayName), readyStatus))
 	}
 
 	fmt.Fprintf(&b, "\nPress 'r' to manually re-render the screen.\n")
