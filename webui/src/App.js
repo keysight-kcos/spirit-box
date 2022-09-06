@@ -30,8 +30,8 @@ function App() {
 						.then(data => {
 							console.log("received:", data);
 							if (data !== "not up") {
+								setHostIsUp(true);
 								setTimeout(() => {
-									setHostIsUp(true);
 									window.location.reload(true);
 								}, 3000);
 							}
@@ -63,6 +63,7 @@ function App() {
 	} else if (trackerInfoOpen) {
 		return <TrackerInfo tracker={trackerInfo} close={() => setTrackerInfoOpen(false)}/>;
 	} else if (hostIsUp) {
+		return (
 			<div className="bg-blue-300 pl-4 pb-4 h-screen w-full table pr-5">
 			<h1 className="text-3xl font-extrabold mb-10 mt-5">
 				spirit-box
@@ -79,6 +80,7 @@ function App() {
 			</button>
 
 			</div>
+		);
 	} else {
 		return (
 			<div className="bg-blue-300 pl-4 pb-4 h-screen w-full table pr-5">
