@@ -337,12 +337,12 @@ func LoadScriptSpecs() []ScriptSpec {
 
 	bytes, err := os.ReadFile(config.SCRIPT_SPEC_PATH)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("Loading script specs: %s", err.Error()))
 	}
 
 	err = json.Unmarshal(bytes, &temp)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("Loading script specs: %s", err.Error()))
 	}
 
 	return temp.SpecArr

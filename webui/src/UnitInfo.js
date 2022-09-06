@@ -10,6 +10,20 @@ const UnitInfo = ({ unitInfo, close }) => {
 		}
 	};
 
+	if (unitInfo === null) {
+		return (
+			<div className="bg-blue-300 pl-4 pt-5 pb-10 h-screen">
+			<button className="font-bold bg-gray-300 p-2 rounded hover:bg-gray-400 shadow-xl block mb-5" onClick={
+				(e) => {
+					close();
+				}
+			}>Back</button>
+			<div>
+				Permission denied.
+			</div>
+			</div>
+		);
+	} 
 	return (
 		<div className="bg-blue-300 pl-4 pt-5 pb-10">
 		<button className="font-bold bg-gray-300 p-2 rounded hover:bg-gray-400 shadow-xl block mb-5" onClick={

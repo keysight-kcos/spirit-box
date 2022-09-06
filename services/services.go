@@ -160,17 +160,16 @@ func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 // Basic data for a unit's state.
 type UnitInfo struct {
 	Name            string
-	SubStateDesired string // service will be considered ready when this substate is met.
-	// set to "any" if any substate is okay.
-	Ready       bool // observed substate matches desired substate
-	LoadState   string
-	ActiveState string
-	SubState    string
-	Description string // from systemd
-	Desc        string // user-provided 
-	Properties  map[string]interface{}
-	At          time.Time
-	uw          *UnitWatcher
+	SubStateDesired string // set to "any" if any substate is okay.
+	Ready           bool   // observed substate matches desired substate
+	LoadState       string
+	ActiveState     string
+	SubState        string
+	Description     string // from systemd
+	Desc            string // user-provided
+	Properties      map[string]interface{}
+	At              time.Time
+	uw              *UnitWatcher
 }
 
 // Check if unit info needs to be updated, log if it was changed.
@@ -199,16 +198,6 @@ func (u *UnitInfo) update(updates [3]string, properties map[string]interface{}) 
 	if changed {
 		obj := u.GetStateChange(from1, from2, from3, from4)
 		timeChanged := getTimeOfStateChange(updates[1], properties)
-		/*
-			// for debugging
-			if strings.Contains(fmt.Sprintf("%v", timeChanged), "69") {
-				for k, v := range properties {
-					if strings.Contains(k, "ime") {
-						log.Printf("%s: %v", k, v)
-					}
-				}
-			}
-		*/
 
 		go func(obj *UnitStateChange, timeChanged, at time.Time, unitName string) {
 			le := logging.NewLogEvent(fmt.Sprintf("%s state change.", unitName), obj)
@@ -219,7 +208,9 @@ func (u *UnitInfo) update(updates [3]string, properties map[string]interface{}) 
 		}(obj, timeChanged, u.At, u.Name)
 
 		u.At = timeChanged
-		u.Properties = properties
+		if config.SYSTEMD_ACCESS {
+			u.Properties = properties
+		}
 	}
 
 	return changed

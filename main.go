@@ -88,6 +88,11 @@ func main() {
 	flag.Parse()
 	config.InitPaths()
 
+	config.LoadGeneralConfig()
+	if !config.ENABLED { // exit early
+		return
+	}
+
 	device.LoadNetworkConfig()
 
 	ip := device.GetIPv4Addr(device.NIC)
