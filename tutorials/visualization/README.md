@@ -23,7 +23,7 @@ Replace `...` in ```files = ["..."]``` with the filepath to the spirit-box log.
 
 If running elasticsearch in a container, replace ```urls = ["..."]``` in outputs.elasticsearch with the url of the cluster. (**not tested**)
 
-Once the conf file is finished, you may then run telegraf. By default it is located at `/usr/bin/telegraf`. Confirm that the log was successfully imported by visiting ```http://localhost:9200/_cat/indices?v```
+Once the conf file is finished, you may then run `telegraf --once`. By default it is located at `/usr/bin/telegraf`. Confirm that the log was successfully imported by visiting ```http://localhost:9200/_cat/indices?v```
 
 ![image](https://user-images.githubusercontent.com/56091505/186519577-e4bab209-594e-4da4-bb4c-b8ca5aea7c6d.png)
 
@@ -69,7 +69,7 @@ Q: How do I get Grafana running?
 + Open a terminal and navigate to `/usr/share/grafana` . Run `grafana-server web` .
 
 Q: Why are panels showing duplicate events?
-+ This is an issue with telegraf. You must quit telegraf as soon as stdout shows the data. There may be a way to set telegraf's configuration to end after one import. Otherwise it will duplicate records into elasticsearch.
++ This is an issue with telegraf. You must run telegraf with the --once command line flag.
 
 Q: Does this work with Elasticsearch versions over 8.0?
 + Grafana support for Elasticsearch 8.0+ is experimental so it may not work. To be safe use Elasticsearch 7.16.3.
