@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"spirit-box/config"
 	"spirit-box/device"
 	"spirit-box/scripts"
 	"spirit-box/services"
@@ -83,8 +84,15 @@ func (m model) View() string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, lp.JoinHorizontal(lp.Top, styles.DoubleBorder.Render("spirit-box"), m.StatusHeader()))
+	header, allReady := m.StatusHeader()
+	fmt.Fprintf(&b, lp.JoinHorizontal(lp.Top, styles.DoubleBorder.Render("spirit-box"), header))
 	fmt.Fprintf(&b, "\n")
+	if allReady && config.BANNER_MESSAGE != "" {
+		log.Printf(config.BANNER_MESSAGE)
+		fmt.Fprintf(&b, lp.PlaceHorizontal(100, 0.0, styles.DoubleBorderPadded.Render(config.BANNER_MESSAGE)))
+		fmt.Fprintf(&b, "\n\nPress 'r' to manually re-render the screen.\n")
+		return lp.PlaceHorizontal(width, 0, b.String())
+	}
 
 	var readyStatus string
 	fmt.Fprintf(&b, "\nSystemD Units:\n")
@@ -132,9 +140,10 @@ func (m model) View() string {
 	return lp.PlaceHorizontal(width, 0, b.String())
 }
 
-func (m model) StatusHeader() string {
+func (m model) StatusHeader() (string, bool) {
 	var b strings.Builder
 	var info string
+	var allReady bool
 
 	unitsRemaining := m.watcher.NumUnitsNotReady()
 	scriptsRemaining, scriptsFailed := m.controller.GetStatus()
@@ -161,11 +170,12 @@ func (m model) StatusHeader() string {
 	fmt.Fprintf(&b, "\n")
 	if unitsRemaining == 0 && scriptsRemaining == 0 && scriptsFailed == 0 {
 		fmt.Fprintf(&b, styles.Blinking.Render("System is ready. Press 'q' to close spirit-box."))
+		allReady = true
 	}
 
 	fmt.Fprintf(&b, fmt.Sprintf("\n%s\n", m.ipStr))
 
-	return styles.LeftPadding.Render(b.String())
+	return styles.LeftPadding.Render(b.String()), allReady
 }
 
 func alignRight(width int, str string) string {

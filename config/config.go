@@ -20,6 +20,9 @@ var TUI_FANCY bool
 // Permission for user to view expanded info on systemd units.
 var SYSTEMD_ACCESS bool
 
+// Message to display when system is ready.
+var BANNER_MESSAGE string
+
 // Run spirit-box or exit early.
 var ENABLED bool
 
@@ -41,6 +44,7 @@ func InitPaths() {
 type GeneralConfig struct {
 	EnableOverridePath string `json:"enableOverridePath"`
 	SystemdAccess      bool   `json:"systemdAccess"`
+	BannerMessage      string `json:"bannerMessage"`
 	Enabled            bool   `json:"enabled"`
 }
 
@@ -75,4 +79,5 @@ func LoadGeneralConfig() {
 	}
 
 	SYSTEMD_ACCESS = temp.Config.SystemdAccess
+	BANNER_MESSAGE = temp.Config.BannerMessage
 }
