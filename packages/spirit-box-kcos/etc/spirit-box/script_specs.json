@@ -1,7 +1,7 @@
 {
 	"scriptSpecs": [
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-check-cluster",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-check-cluster",
 			"desc": "Cluster is up.",
 			"args": [],
 			"priority": 1,
@@ -9,7 +9,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-check-apiserver",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-check-apiserver",
 			"desc": "K8s API server is up.",
 			"args": [],
 			"priority": 2,
@@ -17,7 +17,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-ingress-ready",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-ingress-ready",
 			"desc": "kcos-ingress",
 			"args": [],
 			"priority": 3,
@@ -25,7 +25,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-ingress-nginx-ready",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-ingress-nginx-ready",
 			"desc": "kcos-nginx-ingress",
 			"args": [],
 			"priority": 3,
@@ -33,7 +33,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kube-dns-ready",
+			"cmd": "/etc/spirit-box/kcos-scripts/kube-dns-ready",
 			"desc": "kube-dns",
 			"args": [],
 			"priority": 3,
@@ -41,7 +41,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kube-proxy-ready",
+			"cmd": "/etc/spirit-box/kcos-scripts/kube-proxy-ready",
 			"desc": "kube-proxy",
 			"args": [],
 			"priority": 3,
@@ -49,7 +49,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-keycloak",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-keycloak",
 			"desc": "keycloak",
 			"args": [],
 			"priority": 4,
@@ -57,7 +57,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-authproxy-keycloak",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-authproxy-keycloak",
 			"desc": "authproxy-keycloak",
 			"args": [],
 			"priority": 4,
@@ -65,7 +65,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-logging-framework",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-logging-framework",
 			"desc": "kcos-logging-framework",
 			"args": [],
 			"priority": 3,
@@ -73,7 +73,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-logging-rotate",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-logging-rotate",
 			"desc": "kcos-logging-rotate.",
 			"args": [],
 			"priority": 3,
@@ -81,7 +81,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-firewall",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-firewall",
 			"desc": "firewall",
 			"args": [],
 			"priority": 3,
@@ -89,7 +89,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-rest-api",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-rest-api",
 			"desc": "kcos-rest-api",
 			"args": [],
 			"priority": 3,
@@ -97,7 +97,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-ui-service",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-ui-service",
 			"desc": "kcos-ui-service",
 			"args": [],
 			"priority": 3,
@@ -105,7 +105,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-ui-client",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-ui-client",
 			"desc": "kcos-ui-client",
 			"args": [],
 			"priority": 3,
@@ -113,7 +113,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-shell",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-shell",
 			"desc": "kcos-shell",
 			"args": [],
 			"priority": 3,
@@ -121,7 +121,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/kcos-shell-configuration",
+			"cmd": "/etc/spirit-box/kcos-scripts/kcos-shell-configuration",
 			"desc": "kcos-shell-configuration",
 			"args": [],
 			"priority": 3,
@@ -129,7 +129,7 @@
 			"totalWaitTime": 300000
 		},
 		{
-			"cmd": "/root/etc/spirit-box/kcos-scripts/weave-net-ready",
+			"cmd": "/etc/spirit-box/kcos-scripts/weave-net-ready",
 			"desc": "weave-net",
 			"args": [],
 			"priority": 3,
