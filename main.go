@@ -86,22 +86,27 @@ func main() {
 	rebootServer := make(chan struct{})
 
 	flag.Parse()
-	config.InitPaths()
 
-	config.LoadGeneralConfig()
+	// Writes default log messages (log.Print, log.Fatal, etc...)
+	// to /dev/null by default. File can be specified with -d flag.
+	f, err := tea.LogToFile(config.DEBUG_FILE, "debug")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	config.LoadConfig()
 	if !config.ENABLED { // exit early
 		fmt.Printf("spirit-box is disabled. Exiting now.\n")
 		return
 	}
-
-	device.LoadNetworkConfig()
 
 	ip := device.GetIPv4Addr(device.NIC)
 	ip = ip[:len(ip)-3]
 
 	// apply iptables rules
 	device.UnsetPortForwarding()
-	err := device.SetPortForwarding()
+	err = device.SetPortForwarding()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -126,14 +131,6 @@ func main() {
 
 	log.Printf("Starting server on port %s.", device.SERVER_PORT)
 	handler := cors.Default().Handler(mux)
-
-	// Writes default log messages (log.Print, log.Fatal, etc...)
-	// to /dev/null by default. File can be specified with -d flag.
-	f, err := tea.LogToFile(config.DEBUG_FILE, "debug")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
 
 	fmt.Printf("\033[2J") // clear the screen
 	log.Print("Starting spirit-box...")

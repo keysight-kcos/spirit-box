@@ -6,10 +6,11 @@ import (
 	"io"
 	"log"
 	"os"
-	"spirit-box/config"
 	"sync"
 	"time"
 )
+
+var LOG_PATH string
 
 type LogEvents struct {
 	mu     sync.Mutex
@@ -24,12 +25,12 @@ type LogObject interface {
 }
 
 type LogEvent struct {
-	StartTime time.Time `json:"startTime"`
-	EndTime   time.Time `json:"endTime"`
+	StartTime time.Time     `json:"startTime"`
+	EndTime   time.Time     `json:"endTime"`
 	Duration  time.Duration `json:"duration"`
-	Desc      string    `json:"description"`
-	ObjType   string    `json:"objectType"`
-	Obj       LogObject `json:"object"`
+	Desc      string        `json:"description"`
+	ObjType   string        `json:"objectType"`
+	Obj       LogObject     `json:"object"`
 }
 
 // Start and end times should be configured using the pointer returned.
@@ -69,7 +70,7 @@ func (l *LogEvents) WriteJSON(f io.Writer) {
 
 type MessageLog struct {
 	Message string `json:"message"`
-	Name string `json:"name"`
+	Name    string `json:"name"`
 }
 
 func (m *MessageLog) LogLine() string {
@@ -94,7 +95,7 @@ func CreateLogFile() *os.File {
 	cur_time := time.Now()
 	filename := FormatTime(cur_time) + ".log"
 
-	file, err := os.OpenFile(config.LOG_PATH+filename, os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(LOG_PATH+filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
