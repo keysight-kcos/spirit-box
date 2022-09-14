@@ -1,7 +1,0 @@
-{
-	"config": {
-		"systemdAccess": true,
-		"enabled": true,
-		"bannerMessage": "Login with console, \nthen login with admin/<password>."
-	}
-}

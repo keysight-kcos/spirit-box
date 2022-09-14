@@ -1,0 +1,79 @@
+{
+	"serverPort": "8080",
+	"hostPort": "80",
+	"tempPort": "8081",
+	"nic": "eth0",
+	"systemdAccess": "true",
+	"bannerMessage": "Hack the planet.",
+	"enabled": "true",
+	"configOverride": "/nonexistent/path/override1.json",
+	"unitSpecs": [
+		{
+			"name": "polkit.service",
+			"desc": "polkit",
+			"subStateDesired": "running"
+		},
+		{
+			"name": "NetworkManager.service",
+			"desc": "network manager",
+			"subStateDesired": "running"
+		},
+		{
+			"name": "cron.service",
+			"desc": "cron",
+			"subStateDesired": "running"
+		},
+		{
+			"name": "docker.service",
+			"desc": "docker",
+			"subStateDesired": "running"
+		},
+		{
+			"name": "printSpam.service",
+			"desc": "printSpam",
+			"subStateDesired": "dead"
+		}
+	],
+	"scriptSpecs": [
+		{
+			"cmd": "/usr/bin/dummyScript",
+			"args": ["-wait=500", "-prob=30"],
+			"desc": "dummy 30",
+			"priority": 1,
+			"retryTimeout": 150,
+			"totalWaitTime": 3000
+		},
+		{
+			"cmd": "/usr/bin/dummyScript",
+			"args": ["-wait=500"],
+			"desc": "dummy 50",
+			"priority": 1,
+			"retryTimeout": 200,
+			"totalWaitTime": 3000
+		},
+		{
+			"cmd": "/usr/bin/dummyScript",
+			"args": ["-wait=1500", "-prob=60"],
+			"desc": "dummy 60",
+			"priority": 2,
+			"retryTimeout": 150,
+			"totalWaitTime": 3900
+		},
+		{
+			"cmd": "/usr/bin/dummyScript2",
+			"args": ["-wait=1500", "-prob=60"],
+			"desc": "dummy 60 2",
+			"priority": 2,
+			"retryTimeout": 150,
+			"totalWaitTime": 3900
+		},
+		{
+			"cmd": "/usr/bin/dummyScript",
+			"args": ["-wait=1500", "-prob=0"],
+			"desc": "dummy staller",
+			"priority": 2,
+			"retryTimeout": 150,
+			"totalWaitTime": 3900
+		}
+	]
+}

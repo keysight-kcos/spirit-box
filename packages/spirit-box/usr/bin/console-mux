@@ -1,0 +1,14 @@
+#!/bin/bash
+set -x
+
+# uncomment export below if any scripts require kubectl access
+#export KUBECONFIG=/etc/kubernetes/admin.conf 
+
+session="mux-spirit-box"
+cmd="$*"
+
+cd
+stty rows 45 cols 150
+tmux \
+	new-session -A -s "$session" \
+	"$cmd" \; unbind-key -a

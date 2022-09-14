@@ -1,8 +1,0 @@
-#!/bin/sh
-
-set -e
-
-echo "Run the following to enable spirit-box on the desired ttys:"
-echo "\tsystemctl enable spirit-box@<someTTY>.service"
-
-systemctl enable disableSystemdLogging.service
