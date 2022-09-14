@@ -2,12 +2,9 @@
 package services
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"os"
-	"spirit-box/config"
 	"spirit-box/logging"
 	"sync"
 	"time"
@@ -16,11 +13,17 @@ import (
 )
 
 var SYSTEMD_START_TIME time.Time
+var UNIT_SPECS []UnitSpec
+var SYSTEMD_ACCESS bool
 
 type UnitSpec struct {
 	Name            string `json:"name"`
 	Desc            string `json:"desc"`
 	SubStateDesired string `json:"subStateDesired"`
+}
+
+func (u UnitSpec) ToString() string {
+	return u.Name + u.Desc + u.SubStateDesired
 }
 
 type UnitWatcher struct {
@@ -152,7 +155,7 @@ func NewWatcher(dConn *dbus.Conn) *UnitWatcher {
 
 	setSystemdStartTime(dConn)
 
-	newUW.Units = LoadUnitSpecs(config.UNIT_SPEC_PATH, newUW, SYSTEMD_START_TIME)
+	newUW.Units = LoadUnitSpecs(newUW, SYSTEMD_START_TIME)
 
 	return newUW
 }
@@ -208,7 +211,7 @@ func (u *UnitInfo) update(updates [3]string, properties map[string]interface{}) 
 		}(obj, timeChanged, u.At, u.Name)
 
 		u.At = timeChanged
-		if config.SYSTEMD_ACCESS {
+		if SYSTEMD_ACCESS {
 			u.Properties = properties
 		}
 	}
@@ -246,28 +249,11 @@ func (u *UnitStateChange) GetObjType() string {
 	return "SystemD unit state change"
 }
 
-func LoadUnitSpecs(filename string, uw *UnitWatcher, startTime time.Time) []*UnitInfo {
-	type ParseObj struct {
-		SpecArr []UnitSpec `json:"unitSpecs"`
-	}
-
-	temp := ParseObj{}
+func LoadUnitSpecs(uw *UnitWatcher, startTime time.Time) []*UnitInfo {
+	specs := UNIT_SPECS
 	units := make([]*UnitInfo, 0)
-	if _, err := os.Stat(config.UNIT_SPEC_PATH); errors.Is(err, os.ErrNotExist) {
-		return units
-	}
 
-	bytes, err := os.ReadFile(config.UNIT_SPEC_PATH)
-	if err != nil {
-		log.Fatal(fmt.Errorf("Reading unit specs: %s", err.Error()))
-	}
-
-	err = json.Unmarshal(bytes, &temp)
-	if err != nil {
-		log.Fatal(fmt.Errorf("Reading unit specs: %s", err.Error()))
-	}
-
-	for _, s := range temp.SpecArr {
+	for _, s := range specs {
 		units = append(units, &UnitInfo{
 			s.Name,
 			s.SubStateDesired,

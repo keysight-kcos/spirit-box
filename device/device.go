@@ -2,13 +2,10 @@
 package device
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"os/exec"
-	"spirit-box/config"
 	"strings"
 	"time"
 )
@@ -121,10 +118,10 @@ func Stub() {
 	}
 
 	/*
-	all, err := net.InterfaceAddrs()
-	if err != nil {
-		log.Fatal(err)
-	}
+		all, err := net.InterfaceAddrs()
+		if err != nil {
+			log.Fatal(err)
+		}
 	*/
 
 	multi, err := i.MulticastAddrs()
@@ -138,10 +135,10 @@ func Stub() {
 	}
 
 	/*
-	fmt.Printf("All:\n")
-	for _, addr := range all {
-		fmt.Printf("%s: %s\n", addr.String(), addr.Network())
-	}
+		fmt.Printf("All:\n")
+		for _, addr := range all {
+			fmt.Printf("%s: %s\n", addr.String(), addr.Network())
+		}
 	*/
 
 	fmt.Printf("Unicast:\n")
@@ -207,31 +204,4 @@ func UnsetPortForwarding() error {
 		return err
 	}
 	return SetRules("-D", NIC, TEMP_PORT, HOST_PORT)
-}
-
-// Just loading one each for now
-func LoadNetworkConfig() {
-	type ParseObj struct {
-		ServerPort string `json:"serverPort"`
-		HostPort   string `json:"hostPort"`
-		TempPort   string `json:"tempPort"`
-		Nic        string `json:"nic"`
-	}
-
-	temp := ParseObj{}
-
-	bytes, err := os.ReadFile(config.NETWORK_CONFIG_PATH)
-	if err != nil { // just use defaults on error
-		return
-	}
-
-	err = json.Unmarshal(bytes, &temp)
-	if err != nil { // just use defaults on error
-		return
-	}
-
-	SERVER_PORT = temp.ServerPort
-	HOST_PORT = temp.HostPort
-	TEMP_PORT = temp.TempPort
-	NIC = temp.Nic
 }

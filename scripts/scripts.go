@@ -2,17 +2,16 @@ package scripts
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
-	"spirit-box/config"
 	"spirit-box/logging"
 	"strings"
 	"sync"
 	"time"
 )
+
+var SCRIPT_SPECS []ScriptSpec
 
 // Loaded from a json file.
 // Specifications for how to run a script.
@@ -279,7 +278,7 @@ func (sc *ScriptController) GetStatus() (int, int) {
 
 func NewController() *ScriptController {
 	priorities := make(map[int]PriorityGroup)
-	specs := LoadScriptSpecs()
+	specs := SCRIPT_SPECS
 	maxPriority := 0 // Assuming negative priorities are not a thing.
 	numPGroups := 0
 
@@ -322,30 +321,6 @@ func NewController() *ScriptController {
 	}
 
 	return sc
-}
-
-func LoadScriptSpecs() []ScriptSpec {
-	type ParseObj struct {
-		SpecArr []ScriptSpec `json:"scriptSpecs"`
-	}
-
-	temp := ParseObj{}
-	specs := make([]ScriptSpec, 0)
-	if _, err := os.Stat(config.SCRIPT_SPEC_PATH); errors.Is(err, os.ErrNotExist) {
-		return specs
-	}
-
-	bytes, err := os.ReadFile(config.SCRIPT_SPEC_PATH)
-	if err != nil {
-		log.Fatal(fmt.Errorf("Loading script specs: %s", err.Error()))
-	}
-
-	err = json.Unmarshal(bytes, &temp)
-	if err != nil {
-		log.Fatal(fmt.Errorf("Loading script specs: %s", err.Error()))
-	}
-
-	return temp.SpecArr
 }
 
 // used in TUI
