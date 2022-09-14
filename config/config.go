@@ -70,9 +70,10 @@ func LoadConfig() {
 	if err != nil {
 		log.Fatal(fmt.Errorf("Loading config from %s: %s", CONFIG_PATH, err.Error()))
 	}
-	log.Printf("Successfully loaded config from %s: %+v\n", CONFIG_PATH, configObj)
+	log.Printf("Successfully loaded config from %s.", CONFIG_PATH)
 
 	loadConfigRecursive(&configObj, configObj.ConfigOverride)
+	log.Printf("Successfully loaded config: %+v\n", configObj)
 
 	// not boolean for purpose of conditional overrides
 	if configObj.Enabled == "true" {
@@ -95,21 +96,29 @@ func LoadConfig() {
 }
 
 func loadConfigRecursive(configObj *ParseObj, configPath string) {
-	if configPath == "" {
+	fileInfo, err := os.Stat(configPath)
+	if os.IsNotExist(err) {
+		log.Printf("Loading config from %s: Path does not exist.", configPath)
+		return
+	}
+	if fileInfo.IsDir() {
+		log.Printf("Loading config from %s: Is a directory.", configPath)
 		return
 	}
 
 	temp := ParseObj{}
 	bytes, err := os.ReadFile(configPath)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Loading config from %s: %s", configPath, err.Error()))
+		log.Print(fmt.Errorf("Loading config from %s: %s", configPath, err.Error()))
+		return
 	}
 
 	err = json.Unmarshal(bytes, &temp)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Loading config from %s: %s", configPath, err.Error()))
+		log.Print(fmt.Errorf("Loading config from %s: %s", configPath, err.Error()))
+		return
 	}
-	log.Printf("Successfully loaded config from %s: %+v\n", configPath, temp)
+	log.Printf("Successfully loaded config from %s.", configPath)
 
 	joinConfigs(configObj, &temp)
 	loadConfigRecursive(configObj, temp.ConfigOverride)
@@ -159,10 +168,10 @@ func joinConfigs(configObj *ParseObj, overrides *ParseObj) {
 	if len(overrides.ScriptSpecArr) > 0 {
 		for _, spec := range overrides.ScriptSpecArr {
 			duplicate := false
-			sig := spec.ToString()
+			sig := fmt.Sprintf("%v", spec)
 
 			for _, curSpec := range configObj.ScriptSpecArr {
-				if curSpec.ToString() == sig {
+				if fmt.Sprintf("%v", curSpec) == sig {
 					duplicate = true
 					break
 				}
