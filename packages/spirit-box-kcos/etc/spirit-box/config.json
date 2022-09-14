@@ -5,7 +5,8 @@
 	"nic": "mgmt0",
 	"systemdAccess": "true",
 	"bannerMessage": "A message for the masses.",
-	"enabled": "true",
+	"enabled": "false",
+	"configOverride": "/root/spirit-box-override.json",
 	"unitSpecs": [
 		{
 			"name": "docker.service",
