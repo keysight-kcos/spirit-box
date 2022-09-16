@@ -1,48 +1,138 @@
 # spirit-box
-insert logo here
 
-## Intro
-For machines with long boot processes, it is impossible to know exactly what the system is doing. Spirit-box is the solution. Spirit-box is a data-driven web and terminal UI for Linux systems. It provides real-time updates for visibility into the system during early stages of boot. 
-
-Currently, it is possible to get live updates on systemd units. Users are also able to use their own scripts to give more precise insight into the processes that are being started. All of this is data-driven and configurable by the user.
+spirit-box provides a real-time visibility window into Linux systems during boot-up. 
 
 ![mainScreen](https://user-images.githubusercontent.com/56091505/179314635-4c7cb978-9708-4d54-8860-7944feb22b97.gif)
 
+This visibility is achieved through live updates on the state of systemd units as well as through user-specified custom status-checking scripts.
 
-## Systemd Units
-Users can define what units they would like to monitor in the whitelist file. The service will be considered ready by spirit-box once it achieves the specified substate. Each service is seperated by a newline. The format is:
+spirit-box aims to be data-driven and highly configurable, allowing for users to adjust the tool to match the visibility needs of their target system.
 
-    unitname:substate
+## Config
 
-For example,
+spirit-box's primary configuration file is located in `/etc/spirit-box/` by default. The location of the `spirit-box` directory can be set
+when running spirit-box with the flag `-p <path to directory>`.
 
-    NetworkManager.service:running
+- `serverPort`: The port that spirit-box's server uses.
+- `hostPort`: The port that the host machine uses for its web UI (if it has one).
+- `tempPort`: The port to which the host machine's default web server is rerouted while spirit-box is running.
+- `nic`: The nic on which to set iptables rules and gather IP addresses.
+- `systemdAccess`: Control's the user's access to the full readouts of systemd units.
+- `bannerMessage`: A message to display after spirit-box recognizes that the host system is ready.
+- `enabled`: Determines whether spirit-box runs normally or exits early.
+- `configOverride`: A path to an override config file. Fields that are set in an override file will override the fields set in previous config files, except for
+the `unitSpecs` and `scriptSpecs` fields, which will append specifications instead. These can be chained indefinitely, but there are currently no checks for loops. 
+- `unitSpecs`: 
+    - `name`: The name of the systemd unit to be tracked.
+    - `desc`: An alias used for the unit when displayed in the spirit-box UIs.
+    - `substateDesired`: The state at which the unit is considered ready.
+ - `scriptSpecs`:
+    - `cmd`: The path to the script's executable.
+    - `args`: Arguments passed to the script.
+    - `desc`: An alias used for the script when displayed in the spirit-box UIs.
+    - `priority`: A positive number specifying the order in which scripts are run. Scripts with lower priority numbers are run first. Scripts with the same priority number are run concurrently.
+    - `retryTimeout`: The amount of time to wait before rerunning a script if it has failed.
+    - `totalWaitTime`: The max amount of time to wait for a script to return a success, including reruns.
 
-will have spirit-box monitor the network manager service.
+Example `config.json` file. 
+```
+{
+	"serverPort": "8080",
+	"hostPort": "80",
+	"tempPort": "8081",
+	"nic": "eth0",
+	"systemdAccess": "true",
+	"bannerMessage": "Hack the planet.",
+	"enabled": "true",
+	"configOverride": "/nonexistent/path/override1.json",
+	"unitSpecs": [
+		{
+			"name": "polkit.service",
+			"desc": "polkit",
+			"subStateDesired": "running"
+		},
+		{
+			"name": "NetworkManager.service",
+			"desc": "network manager",
+			"subStateDesired": "running"
+		},
+		{
+			"name": "cron.service",
+			"desc": "cron",
+			"subStateDesired": "running"
+		},
+		{
+			"name": "docker.service",
+			"desc": "docker",
+			"subStateDesired": "running"
+		},
+		{
+			"name": "printSpam.service",
+			"desc": "printSpam",
+			"subStateDesired": "dead"
+		}
+	],
+	"scriptSpecs": [
+		{
+			"cmd": "/usr/bin/dummyScript",
+			"args": ["-wait=500", "-prob=30"],
+			"desc": "dummy 30",
+			"priority": 1,
+			"retryTimeout": 150,
+			"totalWaitTime": 3000
+		},
+		{
+			"cmd": "/usr/bin/dummyScript",
+			"args": ["-wait=500"],
+			"desc": "dummy 50",
+			"priority": 1,
+			"retryTimeout": 200,
+			"totalWaitTime": 3000
+		},
+		{
+			"cmd": "/usr/bin/dummyScript",
+			"args": ["-wait=1500", "-prob=60"],
+			"desc": "dummy 60",
+			"priority": 2,
+			"retryTimeout": 150,
+			"totalWaitTime": 3900
+		},
+		{
+			"cmd": "/usr/bin/dummyScript2",
+			"args": ["-wait=1500", "-prob=60"],
+			"desc": "dummy 60 2",
+			"priority": 2,
+			"retryTimeout": 150,
+			"totalWaitTime": 3900
+		},
+		{
+			"cmd": "/usr/bin/dummyScript",
+			"args": ["-wait=1500", "-prob=0"],
+			"desc": "dummy staller",
+			"priority": 2,
+			"retryTimeout": 150,
+			"totalWaitTime": 3900
+		}
+	]
+}
+```
 
-## Scripts
-Users can specify scripts for spirit-box to run on boot. These scripts are typically used to monitor boot-up processes in greater detail than systemd can provide. However, they do not have to be monitor scripts. The list of scripts are defined in script_specs.json. The file is an array of objects. The format of each script is:
+## Script Output Format
 
-+ "cmd": "<path to script\>",
-
-+ "args": ["<argument 1\>", "<argument 2\>" ...],
-
-+ "priority": <priority level\>,
-
-+ "retryTimeout": <time between retries of the script\>,
-
-+ "totalWaitTime": <time until considering the script a failure\>
-
-Scripts can be sorted by priority. All scripts in a lower priority group must either complete successfully or time out before spirit-box begins to execute scripts of the next higher priority group. This allows scripts to be run after their dependancies have been successfully finished. Scripts with the same priority run concurrently.
-
-retryTimeout is the amount of time (in milliseconds) spirit-box will wait before attempting to rerun the script. Spirit-box will only attempt to rerun scripts if they time out from this timer, or if they return as unsuccessful. Unsuccessful returns are defined in the script by the user.
-
-totalWaitTime is the amount of time (in milliseconds) spirit-box will wait for a script to return successfully before declaring the script as a failure. Spirit-box will stop rerunning this script. This time includes all the reruns of a script.
+The scripts provided to spirit-box are not limited in what they are allowed to do, but their output must follow the following format:
+```
+{
+    "info": "Any arbitrary string",
+    "success": <true or false>
+}
+```
+- `info`: This field can be used to capture some state that the script observed if anything more complex than a simple true/false needs to be recorded.
+- `success`: If true, the spirit-box will register the check as a success and stop trying to rerun the script. Otherwise, the script will continue to be run within the constraints of the `retryTimeout` and `totalWaitTime` specifications.
 
 ## Logging
 
 
-Spirit-box creates comprehensive logs detailing the systemd services and scripts specified in the configurations. All logs are organized in the JSON format. Each log event has five fields:
+spirit-box creates comprehensive logs detailing the systemd services and scripts specified in the configurations. All logs are organized in the JSON format. Each log event has five fields:
 
 + startTime - the time the event was observed by spirit-box
 + endTime - the time the event concluded
@@ -55,6 +145,8 @@ There are multiple objectTypes that represent different sorts of events.
 + Message - details critical information about spirit-box such as when spirit-box starts and its dependancies are up
 + SystemD unit state change - describes state and substate changes in a systemd unit. Substate data is contained in the object.
 + Script event - describes script executions. The object contains data from every run of the script, if the script was rerun due to failure. It contains data such as the script's command path, arguments, priority group, timeouts, and success status.
+
+Log files are stored in the `logs` directory of the spirit-box directory (`/etc/spirit-box/` by default).
 
 ## Terminal User Interface
 
@@ -70,15 +162,22 @@ The scripts screen has an overview of all scripts specified in the configuration
 
 ## Graphical User Interface
 
-Spirit-box's web page can be seen on localhost both port 80 and port 8080. Once spirit-box exits, port 80 will be open to any other services that uses it automatically. Reload the page to see what's being served on port 80. The web UI updates the progress of systemd services and scripts automatically. Shutting down spirit-box from the web UI will exit the terminal UI.
+spirit-box's web UI is served on `serverPort` and `hostPort` while it is running. 
+Once spirit-box registers that the system is ready, or if it exits early, `hostPort` will be handed back to the host machine's default service. 
 
 ![Screenshot 2022-07-18 161909](https://user-images.githubusercontent.com/56091505/179632771-941def88-4ffe-4be2-86fd-11853c777368.png)
 
-The scripts tab has an overview of all scripts specified in the configuration files. Scripts are organized by priority group. The user is able to view information about the scripts within that group. Selecting a script shows information about each run.
+The Scripts dashboard displays an overview of the statuses of all scripts specified within the configuration files. Clicking on a script will display the output of each individual run of that script.
 
-The systemd tab has an overview of all whitelisted services. It displays their substates and ready status. A list of properties and their values are accessible when the user selects the service.
+The Units dashboard displays the statuses of all systemd units spirit-box is monitoring. If `systemdAccess` is set to "true", clicking on a unit will display all properties about that particular unit.
 
-## Tutorial
+## Installation
+
+Refer to the README in the `packages` directory for instructions on installing spirit-box via a deb package. 
+
+NOTE: spirit-box is ultimately just a binary that requires a dedicated directory somewhere on the host machine to store an initial config file and store logs. The program does not need to be installed through a deb package. Adjust installation methods according to your usecase.
+
+### Installation methods below are outdated
 
 ### Ubuntu/Debian Install
 1. download the DEB package
@@ -109,24 +208,3 @@ The systemd tab has an overview of all whitelisted services. It displays their s
 `systemctl enable spirit-box@ttyS0.service`
 
 4. reboot
-
-## 08/16
-Here are our current todos listed in approximate order of importance:
-
-- [x] Graceful handoff between spirit-box web UI and host machine's web UI
-- [x] Option for a sequential view of all checks -> TUI lite
-- [x] Timestamps and PID for each individual script run -> this is now included in logs
-- [x] Exact times for systemd timestamps rather than observed times -> events are now ns precision
-- [x] Build a demo environment that demonstrates how this tool can be used in the wild, use KCOS usecases as a base
-- [x] Run the program on different types of devices -> tested on KCOS, CentOS, Ubuntu
-- [ ] Documentation to make it easy for anyone to jump into the project and add things
-- [ ] Documentation for how the program is used
-- [x] Streamlined installations onto host machines with minimal tinkering -> easy to install deb packages
-- [ ] Log visualization -> timeline, graphs, etc. thru grafana
-- [ ] Productization -> Make it easy for others to decide if they have a need for this tool
-- [ ] Option to disable the ability to add more systemd units during runtime
-- [ ] Interactivity with script execution
-- [ ] Combine config files into a single file if that would provide any benefit
-- [ ] Possible use of eBPF
-- [ ] Performance and memory profiling
-
